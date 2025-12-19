@@ -64,6 +64,9 @@ export default function University() {
                             setUniData({ exams: [], deadlines: [], schedule: [], subjects: [] });
                         }
                         setLoading(false);
+                    }, (error) => {
+                        console.error("University Load Error:", error);
+                        setLoading(false);
                     });
                     return () => sub();
                 }

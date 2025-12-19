@@ -38,6 +38,9 @@ export default function LoveTracker() {
                         setDataStore({});
                     }
                     setLoading(false);
+                }, (error) => {
+                    console.error("LoveTracker Load Error:", error);
+                    setLoading(false);
                 });
                 return () => unsubscribeSnapshot();
             }

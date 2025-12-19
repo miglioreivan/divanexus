@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { db, auth } from '../firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, collection } from 'firebase/firestore';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 
 const pageStyle = {
@@ -80,14 +80,17 @@ export default function CarFinance() {
                         setVehicles([]);
                     }
                     setLoading(false);
+                }, (error) => {
+                    console.error("CarFinance Load Error:", error);
+                    setLoading(false);
                 });
 
-                // Load Trips for linking
-                const tripsRef = doc(db, "users", currentUser.uid, "drive_logbook", "main");
-                unsubTrips = onSnapshot(tripsRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        setTrips(docSnap.data().trips || []);
-                    }
+                // Load Trips for linking (Corrected Path)
+                const tripsRef = collection(db, "users", currentUser.uid, "drivelogbook", "trips", "items");
+                unsubTrips = onSnapshot(tripsRef, (snap) => {
+                    setTrips(snap.docs.map(d => ({ docId: d.id, ...d.data() })));
+                }, (error) => {
+                    console.error("Trips Load Error:", error);
                 });
             } else {
                 setLoading(false);

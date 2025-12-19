@@ -45,6 +45,8 @@ export default function AdminPage() {
             const reqs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setRequests(reqs);
             setPendingCount(reqs.length);
+        }, (error) => {
+            console.error("Requests Load Error:", error);
         });
         return unsubRequests; // Cleanup handled by component unmount roughly, or strict useEffect return logic if we persist unsub
     };
