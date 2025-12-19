@@ -1,0 +1,19 @@
+.day-cell {
+    aspect-ratio: 1;
+    transition: all 0.2s ease;
+    border-radius: 16px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
