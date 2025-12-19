@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import AppPage from './pages/AppPage';
-import DriveLogbook from './pages/DriveLogbook';
+import DriveLogbook from './pages/TripRecords'; // Import TripRecords as DriveLogbook (Alias for compatibility)
 import LoveTracker from './pages/LoveTracker';
 import University from './pages/University';
 import CarFinance from './pages/CarFinance';
