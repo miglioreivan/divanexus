@@ -73,7 +73,7 @@ export default function TripRecords() {
         onSnapshot(collection(db, "users", uid, "drivelogbook", "trips", "items"), (s) => {
             const data = s.docs.map(d => ({ id: d.id, ...d.data() }));
             setAllRecords(data);
-            setCarRecords(data.filter(t => t.type === 'car').sort((a, b) => (a.durationMs || 0) - (b.durationMs || 0)));
+            setCarRecords(data.filter(t => t.type === 'car' || !t.type).sort((a, b) => (a.durationMs || 0) - (b.durationMs || 0)));
             setWalkRecords(data.filter(t => t.type === 'walk').sort((a, b) => (b.distance || 0) - (a.distance || 0)));
             setLoading(false);
         });
@@ -361,7 +361,7 @@ export default function TripRecords() {
                 {/* EDITOR */}
                 {activeTab === 'editor' && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
-                        <div className="lg:col-span-2 bg-[#121212] rounded-3xl border border-white/10 overflow-hidden relative shadow-2xl">
+                        <div className="lg:col-span-2 bg-[#121212] rounded-3xl border border-white/10 overflow-hidden relative shadow-2xl h-full">
                             <div ref={mapContainerRef} className="w-full h-full z-0"></div>
 
                             {/* Map Floating Controls */}
