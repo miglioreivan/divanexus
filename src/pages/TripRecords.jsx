@@ -375,8 +375,43 @@ export default function TripRecords() {
     };
 
     const deleteItem = async (collectionName, id) => {
-        if (confirm("Eliminare definitivamente?")) await deleteDoc(doc(db, "users", auth.currentUser.uid, "drivelogbook", collectionName, "items", id));
+        if (!confirm("Eliminare definitivamente questo elemento?")) return;
+        try {
+            await deleteDoc(doc(db, "users", auth.currentUser.uid, "drivelogbook", collectionName, "items", id));
+        } catch (e) {
+            console.error(e);
+            alert("Errore eliminazione: " + e.message + "\nControlla di aver aggiornato le Regole Firebase!");
+        }
     };
+
+    const handleDeleteAllData = async () => {
+        if (!confirm("ATTENZIONE: Stai per eliminare TUTTI i tuoi viaggi e tracciati.\n\nQuesta azione è IRREVERSIBILE.\n\nSei sicuro?")) return;
+        if (!confirm("Conferma finale: ELIMINA TUTTO?")) return;
+
+        setLoading(true);
+        try {
+            const batch = []; // Note: batch size limit is 500, simple approach for now or loose promises
+            // Since we might have many docs, let's just do parallel promises for simplicity in this artifact
+
+            const p1 = getDocs(collection(db, "users", auth.currentUser.uid, "drivelogbook", "trips", "items"));
+            const p2 = getDocs(collection(db, "users", auth.currentUser.uid, "drivelogbook", "tracks", "items"));
+
+            const [snapTrips, snapTracks] = await Promise.all([p1, p2]);
+
+            const promises = [
+                ...snapTrips.docs.map(d => deleteDoc(d.ref)),
+                ...snapTracks.docs.map(d => deleteDoc(d.ref))
+            ];
+
+            await Promise.all(promises);
+            alert("Tutti i dati sono stati eliminati.");
+        } catch (e) {
+            alert("Errore durante l'eliminazione totale: " + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // --- BACKUP LOGIC ---
     const handleExportJSON = () => {
         const data = {
@@ -572,6 +607,15 @@ export default function TripRecords() {
                                         <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
                                     </label>
                                 </div>
+                            </div>
+
+                            {/* DANGER ZONE */}
+                            <div className="mt-12 w-full max-w-2xl border-t border-red-500/20 pt-8 flex flex-col items-center">
+                                <h3 className="text-red-500 font-bold mb-4 flex items-center gap-2">⚠️ DANGER ZONE</h3>
+                                <button onClick={handleDeleteAllData} className="px-6 py-3 rounded-xl border border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white transition-all text-sm font-bold uppercase tracking-wider">
+                                    ELIMINA TUTTI I DATI
+                                </button>
+                                <p className="text-[10px] text-red-500/50 mt-2">Questa azione non può essere annullata.</p>
                             </div>
                         </div>
                     )}
