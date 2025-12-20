@@ -534,6 +534,26 @@ export default function TripRecords() {
 
     const pageStyle = { '--color-accent': '#10b981', '--color-accent-hover': '#059669' };
 
+    // --- HELPERS ---
+    const formatDate = (r) => {
+        if (!r) return "-";
+        const val = r.createdAt || r.date || r.timestamp;
+        if (!val) return "-";
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+    };
+
+    const getVehicleName = (r) => {
+        if (!r) return "?";
+        if (r.vehicleName && r.vehicleName !== "?" && r.vehicleName !== "Sconosciuto") return r.vehicleName;
+        // Lookup
+        if (r.vehicleId) {
+            const v = vehicles.find(x => x.id === r.vehicleId);
+            if (v) return `${v.make} ${v.model}`;
+        }
+        return "Sconosciuto";
+    };
+
     return (
         <div className="min-h-screen p-4 md:p-8 flex items-center justify-center bg-bgApp transition-opacity duration-300" style={pageStyle}>
 
@@ -663,25 +683,7 @@ export default function TripRecords() {
 
                                     if (list.length === 0) return <div className="text-center text-textMuted py-10 italic">Nessun risultato.</div>;
 
-                                    // --- HELPERS ---
-                                    const formatDate = (r) => {
-                                        if (!r) return "-";
-                                        const val = r.createdAt || r.date || r.timestamp;
-                                        if (!val) return "-";
-                                        const d = new Date(val);
-                                        return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
-                                    };
 
-                                    const getVehicleName = (r) => {
-                                        if (!r) return "?";
-                                        if (r.vehicleName && r.vehicleName !== "?" && r.vehicleName !== "Sconosciuto") return r.vehicleName;
-                                        // Lookup
-                                        if (r.vehicleId) {
-                                            const v = vehicles.find(x => x.id === r.vehicleId);
-                                            if (v) return `${v.make} ${v.model}`;
-                                        }
-                                        return "Sconosciuto";
-                                    };
 
                                     // --- RENDER ---
                                     // ... existing ...
