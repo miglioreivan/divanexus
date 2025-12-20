@@ -56,6 +56,8 @@ export default function TripRecords() {
     // ... (existing refs)
 
 
+    // Refs
+    const mapContainerRef = useRef(null);
     const viewMapContainerRef = useRef(null);
     const mapInstance = useRef(null);
     const viewMapInstance = useRef(null);
