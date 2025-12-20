@@ -438,23 +438,46 @@ export default function TripRecords() {
                 const json = JSON.parse(event.target.result);
                 let count = 0;
 
+                // Helper to clean and parse fields
+                const processRecord = (record) => {
+                    const { id, ...rest } = record;
+                    // Detect and fix double-stringified fields common in legacy exports
+                    ['route', 'waypoints', 'mapSnapshot', 'stops'].forEach(field => {
+                        if (typeof rest[field] === 'string') {
+                            try {
+                                const parsed = JSON.parse(rest[field]);
+                                rest[field] = parsed;
+                            } catch (e) {
+                                console.warn(`Could not parse field ${field} for record ${id || 'unknown'}`, e);
+                            }
+                        }
+                    });
+
+                    // Specific fix for "waypoints" which might be "[[lat,lng],...]" string or object
+                    if (Array.isArray(rest.waypoints) && rest.waypoints.length > 0 && typeof rest.waypoints[0] === 'string') {
+                        // Some legacy formats might be mixed, but usually it's JSON string or array of arrays
+                    }
+
+                    return rest;
+                };
+
                 // Import Trips
                 if (json.trips && Array.isArray(json.trips)) {
                     for (const t of json.trips) {
-                        const { id, ...rest } = t;
-                        await addDoc(collection(db, "users", auth.currentUser.uid, "drivelogbook", "trips", "items"), rest);
+                        const cleanedData = processRecord(t);
+                        await addDoc(collection(db, "users", auth.currentUser.uid, "drivelogbook", "trips", "items"), cleanedData);
                         count++;
                     }
                 }
                 // Import Tracks
                 if (json.tracks && Array.isArray(json.tracks)) {
                     for (const t of json.tracks) {
-                        const { id, ...rest } = t;
-                        await addDoc(collection(db, "users", auth.currentUser.uid, "drivelogbook", "tracks", "items"), rest);
+                        const cleanedData = processRecord(t);
+                        await addDoc(collection(db, "users", auth.currentUser.uid, "drivelogbook", "tracks", "items"), cleanedData);
                         count++;
                     }
                 }
-                alert(`Importazione completata! ${count} elementi ripristinati.`);
+                alert(`Importazione completata! ${count} elementi ripristinati e convertiti.`);
             } catch (err) {
                 console.error(err);
                 alert("Errore file backup: " + err.message);
