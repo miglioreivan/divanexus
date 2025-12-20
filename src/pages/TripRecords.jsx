@@ -376,7 +376,58 @@ export default function TripRecords() {
     const deleteItem = async (collectionName, id) => {
         if (confirm("Eliminare definitivamente?")) await deleteDoc(doc(db, "users", auth.currentUser.uid, "drivelogbook", collectionName, "items", id));
     };
+    // --- BACKUP LOGIC ---
+    const handleExportJSON = () => {
+        const data = {
+            trips: [...carRecords, ...walkRecords],
+            tracks: tracks,
+            exportedAt: new Date().toISOString(),
+            version: "v2"
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nexus_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
+    const handleImport = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const json = JSON.parse(event.target.result);
+                let count = 0;
+
+                // Import Trips
+                if (json.trips && Array.isArray(json.trips)) {
+                    for (const t of json.trips) {
+                        const { id, ...rest } = t;
+                        await addDoc(collection(db, "users", auth.currentUser.uid, "drivelogbook", "trips", "items"), rest);
+                        count++;
+                    }
+                }
+                // Import Tracks
+                if (json.tracks && Array.isArray(json.tracks)) {
+                    for (const t of json.tracks) {
+                        const { id, ...rest } = t;
+                        await addDoc(collection(db, "users", auth.currentUser.uid, "drivelogbook", "tracks", "items"), rest);
+                        count++;
+                    }
+                }
+                alert(`Importazione completata! ${count} elementi ripristinati.`);
+            } catch (err) {
+                console.error(err);
+                alert("Errore file backup: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    // --- RENDER HELPERS ---
     useEffect(() => {
         if (startTime && endTime) {
             const s = new Date(`1970-01-01T${startTime}`);
@@ -491,6 +542,36 @@ export default function TripRecords() {
                                     + Crea Nuovo Tracciato
                                 </button>
                             )}
+                        </div>
+                    )}
+
+                    {/* DATA BACKUP TAB */}
+                    {activeTab === 'data' && (
+                        <div className="flex flex-col h-full justify-center items-center pb-20">
+                            <div className="text-center mb-8">
+                                <div className="text-6xl mb-4">💾</div>
+                                <h2 className="text-2xl font-bold text-white mb-2">Backup & Ripristino</h2>
+                                <p className="text-textMuted">Salva i tuoi viaggi al sicuro o ripristina un backup precedente.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
+                                <div className="bento-card p-8 flex flex-col items-center text-center hover:bg-white/5 transition-colors">
+                                    <div className="text-3xl mb-4">📤</div>
+                                    <h3 className="text-xl font-bold text-white mb-2">Esporta Dati</h3>
+                                    <p className="text-xs text-textMuted mb-6">Scarica un file JSON con tutti i tuoi viaggi e tracciati salvati.</p>
+                                    <button onClick={handleExportJSON} className="btn-primary w-full bg-blue-600 hover:bg-blue-500">SCARICA BACKUP</button>
+                                </div>
+
+                                <div className="bento-card p-8 flex flex-col items-center text-center hover:bg-white/5 transition-colors relative">
+                                    <div className="text-3xl mb-4">📥</div>
+                                    <h3 className="text-xl font-bold text-white mb-2">Importa Dati</h3>
+                                    <p className="text-xs text-textMuted mb-6">Carica un file backup per ripristinare i dati persi.</p>
+                                    <label className="btn-secondary w-full cursor-pointer hover:bg-white/10">
+                                        SELEZIONA FILE
+                                        <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     )}
 
