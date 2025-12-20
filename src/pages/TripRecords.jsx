@@ -52,6 +52,8 @@ export default function TripRecords() {
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
     const [avgSpeed, setAvgSpeed] = useState('');
+    const [walkName, setWalkName] = useState('');
+    const [selectedTrackId, setSelectedTrackId] = useState('');
 
     // ... (existing refs)
 
