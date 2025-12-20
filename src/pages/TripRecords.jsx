@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { onAuthStateChanged, signOut } from 'firebase/auth'; // Added signOut import
-import { collection, addDoc, doc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, doc, deleteDoc, updateDoc, onSnapshot, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
