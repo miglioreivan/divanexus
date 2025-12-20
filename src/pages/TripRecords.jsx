@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, addDoc, doc, deleteDoc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -34,7 +34,7 @@ export default function TripRecords() {
     const [editorMode, setEditorMode] = useState('car'); // car, walk
 
     // Editor Data & State
-    const [editingId, setEditingId] = useState(null); // ID of the record being edited
+    const [editingId, setEditingId] = useState(null);
     const [points, setPoints] = useState([]);
     const [distance, setDistance] = useState('');
     const [calculatedDuration, setCalculatedDuration] = useState('');
@@ -51,6 +51,7 @@ export default function TripRecords() {
     const mapInstance = useRef(null);
     const markersRef = useRef([]);
     const polylineRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     // --- INIT ---
     useEffect(() => {
@@ -93,7 +94,7 @@ export default function TripRecords() {
             });
         }
 
-        // Resize map when tab opens
+        // Resize map
         if (activeTab === 'editor' && mapInstance.current) {
             setTimeout(() => mapInstance.current.invalidateSize(), 100);
         }
@@ -126,10 +127,9 @@ export default function TripRecords() {
             markersRef.current.push(m);
         });
 
-        // Draw Line (Simple for Walk)
+        // Draw Line
         if (editorMode === 'walk' && points.length > 1) {
             polylineRef.current = L.polyline(points, { color: '#06b6d4', weight: 4 }).addTo(mapInstance.current);
-            // Calc linear distance
             let d = 0;
             for (let i = 0; i < points.length - 1; i++) d += mapInstance.current.distance(points[i], points[i + 1]);
             setDistance((d / 1000).toFixed(2));
@@ -180,7 +180,6 @@ export default function TripRecords() {
         setEditingId(record.id);
         const mode = record.type === 'walk' ? 'walk' : 'car';
         setEditorMode(mode);
-        // Load data
         setPoints(record.points || []);
         setDistance(record.distance || '');
         if (mode === 'car') {
@@ -225,7 +224,6 @@ export default function TripRecords() {
                 name: isCar ? recordName : walkName,
                 distance: parseFloat(distance || 0),
                 points,
-                createdAt: editingId ? undefined : new Date().toISOString(), // Don't overwrite date on edit
                 updatedAt: new Date().toISOString(),
                 // Car specific
                 startTime: isCar ? startTime : null,
@@ -236,8 +234,7 @@ export default function TripRecords() {
                 vehicleName: v ? `${v.make} ${v.model}` : '?'
             };
 
-            // Remove undefined
-            if (editingId) delete docData.createdAt;
+            if (!editingId) docData.createdAt = new Date().toISOString();
 
             if (editingId) {
                 await updateDoc(doc(db, "users", auth.currentUser.uid, "drivelogbook", "trips", "items", editingId), docData);
@@ -260,7 +257,7 @@ export default function TripRecords() {
         setPoints(prev => prev.filter((_, i) => i !== index));
     };
 
-    const importData = async (e) => {
+    const importData = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
@@ -269,10 +266,8 @@ export default function TripRecords() {
                 const data = JSON.parse(evt.target.result);
                 if (!Array.isArray(data)) throw new Error("File non valido");
                 if (!confirm(`Importare ${data.length} elementi?`)) return;
-                const batch = writeBatch(db);
-                // Using loop for >500 safety if needed, simplest is sequential await for robust feedback
                 for (const item of data) {
-                    const { id, ...rest } = item; // drop ID
+                    const { id, ...rest } = item;
                     await addDoc(collection(db, "users", auth.currentUser.uid, "drivelogbook", "trips", "items"), rest);
                 }
                 alert("Importazione completata!");
@@ -289,223 +284,214 @@ export default function TripRecords() {
         link.click();
     };
 
-    if (loading) return <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-white font-bold">CARICAMENTO...</div>;
+    if (loading) return null;
+
+    // Style override matching LoveTracker but with Green Accent
+    const pageStyle = {
+        '--color-accent': '#10b981', // Emerald-500
+        '--color-accent-hover': '#059669', // Emerald-600
+    };
 
     return (
-        <div className="min-h-screen bg-bgApp p-4 md:p-8 font-sans text-white">
+        <div className="min-h-screen p-4 md:p-8 flex items-center justify-center transition-opacity duration-300" style={pageStyle}>
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-2xl shadow-lg">
-                        ⏱️
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">TripRecords</h1>
-                        <p className="text-sm text-textMuted">Gestione tempi e percorsi</p>
-                    </div>
-                </div>
-                <button onClick={() => navigate('/app')} className="btn-secondary rounded-full py-2 px-6 text-sm">
+            {/* Nav Buttons (Fixed Top Right) */}
+            <div className="fixed top-6 right-6 z-50 flex gap-2">
+                <Link to="/app" className="btn-secondary rounded-full px-4 py-2 text-xs font-semibold no-underline shadow-lg bg-cardDark hover:bg-white/10">
                     🏠 Home
+                </Link>
+                <button
+                    onClick={() => onAuthStateChanged(auth, () => { }).then(() => navigate('/'))} // Auth check trick or just navigate
+                    className="btn-secondary rounded-full px-4 py-2 text-xs font-semibold shadow-lg bg-cardDark hover:bg-red-500/10 hover:text-red-400"
+                >
+                    Esci
                 </button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bento-card p-4 flex flex-col items-center justify-center text-center">
-                    <div className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Record Auto</div>
-                    <div className="text-2xl font-bold">{carRecords.length}</div>
-                </div>
-                <div className="bento-card p-4 flex flex-col items-center justify-center text-center">
-                    <div className="text-[10px] text-cyan-400 font-bold uppercase mb-1">Percorsi Piedi</div>
-                    <div className="text-2xl font-bold">{walkRecords.length}</div>
-                </div>
-                <div className="bento-card p-4 flex flex-col items-center justify-center text-center">
-                    <div className="text-[10px] text-textMuted font-bold uppercase mb-1">Km Auto</div>
-                    <div className="text-2xl font-bold">{carRecords.reduce((a, b) => a + (b.distance || 0), 0).toFixed(1)}</div>
-                </div>
-                <div className="bento-card p-4 flex flex-col items-center justify-center text-center">
-                    <div className="text-[10px] text-textMuted font-bold uppercase mb-1">Km Piedi</div>
-                    <div className="text-2xl font-bold">{walkRecords.reduce((a, b) => a + (b.distance || 0), 0).toFixed(1)}</div>
-                </div>
-            </div>
+            <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-3 gap-6 pt-16 md:pt-0 h-[85vh]">
 
-            {/* Tabs */}
-            <div className="flex p-1 bg-white/5 rounded-xl border border-white/10 w-fit mb-6 overflow-x-auto mx-auto md:mx-0">
-                <button onClick={() => setActiveTab('car_records')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'car_records' ? 'bg-emerald-500 text-black shadow-lg' : 'text-textMuted hover:text-white'}`}>🏎️ Auto</button>
-                <button onClick={() => setActiveTab('walk_paths')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'walk_paths' ? 'bg-cyan-500 text-black shadow-lg' : 'text-textMuted hover:text-white'}`}>🚶 Piedi</button>
-                <button onClick={() => setActiveTab('editor')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'editor' ? 'bg-white text-black shadow-lg' : 'text-textMuted hover:text-white'}`}>📝 Editor {editingId ? '(Modifica)' : ''}</button>
-                <button onClick={() => setActiveTab('data')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'data' ? 'bg-gray-500 text-white shadow-lg' : 'text-textMuted hover:text-white'}`}>💾 Dati</button>
-            </div>
-
-            {/* Content */}
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-                {/* CAR RECORDS */}
-                {activeTab === 'car_records' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {carRecords.map((r, i) => (
-                            <div key={r.id} className="bento-card p-6 relative group hover:border-emerald-500/50">
-                                <div className="absolute top-4 right-4 text-emerald-500 font-mono font-bold text-xl">{r.durationStr}</div>
-                                {i < 3 && <div className="absolute -top-3 -left-3 bg-yellow-400 text-black font-extrabold text-[10px] w-8 h-8 flex items-center justify-center rounded-full shadow-lg border-2 border-[#09090b]">#{i + 1}</div>}
-
-                                <h3 className="text-lg font-bold mb-1 pr-16 text-white">{r.name || "Viaggio"}</h3>
-                                <div className="text-xs text-textMuted mb-4 flex items-center gap-2">
-                                    <span className="bg-white/10 px-2 py-0.5 rounded text-white/80">{r.vehicleName}</span>
-                                    <span>• {new Date(r.createdAt || r.date).toLocaleDateString()}</span>
-                                </div>
-
-                                <div className="flex justify-between items-end border-t border-white/5 pt-4">
-                                    <div className="text-sm">
-                                        <div className="text-textMuted text-[10px] uppercase font-bold">Distanza</div>
-                                        <div className="font-mono">{r.distance} km</div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleEdit(r)} className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors text-xs font-bold">✏️ EDIT</button>
-                                        <button onClick={() => deleteRec(r.id)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500/50 hover:text-red-500 transition-colors">🗑️</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {carRecords.length === 0 && <div className="col-span-full text-center text-textMuted py-10">Nessun record presente. Vai all'Editor.</div>}
-                    </div>
-                )}
-
-                {/* WALK PATHS */}
-                {activeTab === 'walk_paths' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {walkRecords.map(r => (
-                            <div key={r.id} className="bento-card p-6 relative group hover:border-cyan-500/50">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h3 className="text-lg font-bold text-white">{r.name || "Percorso"}</h3>
-                                    <div className="text-cyan-400 font-mono font-bold text-xl">{r.distance} km</div>
-                                </div>
-                                <div className="flex justify-between items-center border-t border-white/5 pt-4 mt-2">
-                                    <div className="text-xs text-textMuted">{new Date(r.createdAt).toLocaleDateString()}</div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleEdit(r)} className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 hover:bg-cyan-500/20 transition-colors text-xs font-bold">✏️ EDIT</button>
-                                        <button onClick={() => deleteRec(r.id)} className="text-xs text-red-500 hover:underline">Elimina</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {walkRecords.length === 0 && <div className="col-span-full text-center text-textMuted py-10">Nessun percorso presente. Vai all'Editor.</div>}
-                    </div>
-                )}
-
-                {/* EDITOR */}
-                {activeTab === 'editor' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
-                        <div className="lg:col-span-2 bg-cardDark rounded-3xl border border-white/10 overflow-hidden relative shadow-2xl h-full">
-                            <div ref={mapContainerRef} className="w-full h-full z-0"></div>
-
-                            <div className="absolute top-4 left-4 z-[500] bg-black/80 backdrop-blur border border-white/10 p-1 rounded-xl flex gap-1">
-                                <button onClick={() => setEditorMode('car')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${editorMode === 'car' ? 'bg-emerald-500 text-white' : 'text-textMuted hover:text-white'}`}>Automezzo</button>
-                                <button onClick={() => setEditorMode('walk')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${editorMode === 'walk' ? 'bg-cyan-500 text-white' : 'text-textMuted hover:text-white'}`}>Piedi</button>
-                            </div>
-
-                            <div className="absolute bottom-4 right-4 z-[500] flex gap-2">
-                                <button onClick={handleReset} className="btn-danger py-2 px-4 text-xs backdrop-blur-md">Reset / Pulisci</button>
-                            </div>
+                {/* Sidebar / Stats */}
+                <div className="bento-card col-span-1 md:col-span-1 p-8 flex flex-col justify-between h-full overflow-y-auto">
+                    <div className="flex flex-col gap-6">
+                        <div>
+                            <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Trip<span className="text-accent">Records</span></h1>
+                            <p className="text-textMuted text-xs font-medium uppercase tracking-widest">Diario di Viaggio</p>
                         </div>
 
-                        <div className="lg:col-span-1 bento-card p-6 overflow-y-auto">
-                            <h2 className="text-xl font-bold mb-6 flex items-center justify-between">
-                                {editorMode === 'car' ? <span className="text-emerald-400">🏎️ {editingId ? 'Modifica Record' : 'Nuovo Record'}</span> : <span className="text-cyan-400">🚶 {editingId ? 'Modifica Percorso' : 'Nuovo Percorso'}</span>}
-                                {editingId && <button onClick={handleReset} className="text-xs text-red-400 hover:underline">Annulla Modifica</button>}
-                            </h2>
+                        {/* Tabs as a vertical list in sidebar for better "Dashboard" feel */}
+                        <div className="flex flex-col gap-2">
+                            <button onClick={() => setActiveTab('car_records')} className={`text-left px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'car_records' ? 'bg-accent text-white shadow-lg' : 'bg-white/5 text-textMuted hover:bg-white/10 hover:text-white'}`}>🏎️ Record Auto ({carRecords.length})</button>
+                            <button onClick={() => setActiveTab('walk_paths')} className={`text-left px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'walk_paths' ? 'bg-cyan-500 text-white shadow-lg' : 'bg-white/5 text-textMuted hover:bg-white/10 hover:text-white'}`}>🚶 Percorsi Piedi ({walkRecords.length})</button>
+                            <button onClick={() => setActiveTab('editor')} className={`text-left px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'editor' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-textMuted hover:bg-white/10 hover:text-white'}`}>📝 Editor {editingId ? '(Modifica)' : ''}</button>
+                            <button onClick={() => setActiveTab('data')} className={`text-left px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'data' ? 'bg-gray-500 text-white shadow-lg' : 'bg-white/5 text-textMuted hover:bg-white/10 hover:text-white'}`}>💾 Dati</button>
+                        </div>
 
-                            <div className="mb-6 bg-white/5 p-3 rounded-xl border border-white/5">
-                                <div className="text-[10px] uppercase text-textMuted font-bold mb-2">Punti Mappa ({points.length})</div>
-                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto custom-scrollbar">
-                                    {points.map((_, i) => (
-                                        <div key={i} className="px-2 py-1 bg-white/10 rounded-md text-[10px] text-gray-300 flex items-center gap-1 group">
-                                            WP {i + 1}
-                                            <button onClick={() => removePoint(i)} className="text-red-400 hover:text-white w-4 h-4 flex items-center justify-center rounded-full hover:bg-red-500/50 transition-colors">×</button>
+                        <div className="space-y-4">
+                            <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
+                                <div className="flex items-center justify-between"><p className="text-xs text-textMuted uppercase font-bold tracking-wider">Km Auto</p><span className="text-xl">🛣️</span></div>
+                                <p className="text-2xl font-bold text-white mt-1">{carRecords.reduce((a, b) => a + (b.distance || 0), 0).toFixed(1)} <span className="text-sm font-normal text-gray-500">km</span></p>
+                            </div>
+                            <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
+                                <div className="flex items-center justify-between"><p className="text-xs text-textMuted uppercase font-bold tracking-wider">Km Piedi</p><span className="text-xl">👣</span></div>
+                                <p className="text-2xl font-bold text-white mt-1">{walkRecords.reduce((a, b) => a + (b.distance || 0), 0).toFixed(1)} <span className="text-sm font-normal text-gray-500">km</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="bento-card col-span-1 md:col-span-2 p-8 relative flex flex-col h-full overflow-hidden">
+
+                    {/* CAR RECORDS LIST */}
+                    {activeTab === 'car_records' && (
+                        <div className="flex flex-col h-full">
+                            <h2 className="text-xl font-bold text-white mb-6">Storico Auto</h2>
+                            <div className="overflow-y-auto space-y-3 flex-1 pr-2 custom-scrollbar">
+                                {carRecords.map((r, i) => (
+                                    <div key={r.id} className="bg-bgApp p-4 rounded-xl border border-white/5 group hover:border-accent/50 transition-all">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    {i < 3 && <span className="bg-yellow-400 text-black text-[10px] font-bold px-1.5 rounded">#{i + 1}</span>}
+                                                    <h3 className="font-bold text-white">{r.name || "Viaggio"}</h3>
+                                                </div>
+                                                <div className="text-xs text-textMuted mt-1">{new Date(r.createdAt || r.date).toLocaleDateString()} • {r.vehicleName}</div>
+                                            </div>
+                                            <div className="text-accent font-mono font-bold text-lg">{r.durationStr}</div>
                                         </div>
-                                    ))}
-                                    {points.length === 0 && <span className="text-xs text-textMuted italic">Clicca sulla mappa...</span>}
+                                        <div className="mt-3 pt-3 border-t border-white/5 flex justify-between items-center">
+                                            <span className="text-xs text-gray-400 font-mono">{r.distance} km</span>
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleEdit(r)} className="text-xs font-bold text-accent hover:underline">MODIFICA</button>
+                                                <button onClick={() => deleteRec(r.id)} className="text-xs font-bold text-red-500 hover:underline">ELIMINA</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* WALK PATHS LIST */}
+                    {activeTab === 'walk_paths' && (
+                        <div className="flex flex-col h-full">
+                            <h2 className="text-xl font-bold text-white mb-6">Storico Piedi</h2>
+                            <div className="overflow-y-auto space-y-3 flex-1 pr-2 custom-scrollbar">
+                                {walkRecords.map(r => (
+                                    <div key={r.id} className="bg-bgApp p-4 rounded-xl border border-white/5 group hover:border-cyan-500/50 transition-all">
+                                        <div className="flex justify-between items-start">
+                                            <h3 className="font-bold text-white">{r.name || "Percorso"}</h3>
+                                            <div className="text-cyan-400 font-mono font-bold text-lg">{r.distance} km</div>
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-white/5 flex justify-between items-center">
+                                            <div className="text-xs text-textMuted">{new Date(r.createdAt).toLocaleDateString()}</div>
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleEdit(r)} className="text-xs font-bold text-cyan-500 hover:underline">MODIFICA</button>
+                                                <button onClick={() => deleteRec(r.id)} className="text-xs font-bold text-red-500 hover:underline">ELIMINA</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* EDITOR */}
+                    {activeTab === 'editor' && (
+                        <div className="flex flex-col h-full">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-white">{editingId ? 'Modifica' : 'Nuovo'}</h2>
+                                <div className="flex gap-2 bg-white/5 p-1 rounded-lg">
+                                    <button onClick={() => setEditorMode('car')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${editorMode === 'car' ? 'bg-accent text-white' : 'text-textMuted hover:text-white'}`}>Auto</button>
+                                    <button onClick={() => setEditorMode('walk')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${editorMode === 'walk' ? 'bg-cyan-500 text-white' : 'text-textMuted hover:text-white'}`}>Piedi</button>
                                 </div>
                             </div>
 
-                            {editorMode === 'car' ? (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="col-span-2">
-                                            <button onClick={calculateRoute} disabled={points.length < 2} className="w-full btn-primary bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm">
-                                                1. Calcola Distanza 📍
-                                            </button>
-                                        </div>
-                                        <div className="col-span-2 p-3 bg-white/5 rounded-xl text-center border border-white/5">
-                                            <div className="text-[10px] uppercase text-textMuted">Distanza</div>
-                                            <div className="text-2xl font-mono font-bold">{distance || '--'} <span className="text-sm">km</span></div>
-                                        </div>
+                            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0">
+                                {/* Map */}
+                                <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/50">
+                                    <div ref={mapContainerRef} className="w-full h-full"></div>
+                                    <div className="absolute bottom-4 right-4 z-[500] flex gap-2">
+                                        <button onClick={handleReset} className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-xs font-bold backdrop-blur hover:bg-red-500/40">Reset</button>
                                     </div>
-
-                                    <div className="space-y-3 pt-4 border-t border-white/10">
-                                        <div>
-                                            <label className="input-label">Nome Tragitto</label>
-                                            <input type="text" value={recordName} onChange={e => setRecordName(e.target.value)} className="input-field" placeholder="Es. Casa - Lavoro" />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div><label className="input-label">Start</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="input-field" /></div>
-                                            <div><label className="input-label">End</label><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="input-field" /></div>
-                                        </div>
-                                        <div className="text-center text-emerald-400 font-mono text-sm py-1">{calculatedDuration && `Durata: ${calculatedDuration}`}</div>
-
-                                        <div>
-                                            <label className="input-label">Veicolo</label>
-                                            <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="input-field">
-                                                <option value="">Seleziona...</option>
-                                                {vehicles.map(v => <option key={v.id} value={v.id}>{v.make} {v.model}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <button onClick={saveRecord} className="w-full mt-4 btn-primary bg-white text-black hover:bg-gray-200">
-                                        {editingId ? "Aggiorna Record" : "2. Salva Record"}
-                                    </button>
                                 </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-cyan-900/20 border border-cyan-500/20 rounded-xl text-center">
-                                        <div className="text-[10px] uppercase text-cyan-400">Distanza Stimata</div>
-                                        <div className="text-3xl font-mono font-bold text-white">{distance || '0.00'} <span className="text-lg text-textMuted">km</span></div>
+
+                                {/* Form */}
+                                <div className="overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 mb-4">
+                                        <div className="text-[10px] uppercase text-textMuted font-bold mb-2">Checkpoints</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {points.map((_, i) => (
+                                                <div key={i} className="px-2 py-1 bg-white/10 rounded-md text-[10px] text-gray-300 flex items-center gap-1">
+                                                    {i + 1} <button onClick={() => removePoint(i)} className="text-red-400 hover:text-white ml-1">×</button>
+                                                </div>
+                                            ))}
+                                            {points.length === 0 && <span className="text-xs text-textMuted italic">Clicca sulla mappa...</span>}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="input-label">Nome Percorso</label>
-                                        <input type="text" value={walkName} onChange={e => setWalkName(e.target.value)} className="input-field" placeholder="Es. Giro del parco" />
+
+                                    <div className="space-y-4">
+                                        {editorMode === 'car' ? (
+                                            <>
+                                                <button onClick={calculateRoute} disabled={points.length < 2} className="w-full btn-secondary py-2 text-xs border-accent/30 text-accent hover:bg-accent/10">Calcola Rotta</button>
+
+                                                <div className="bg-black/20 p-3 rounded-xl text-center border border-white/5 flex justify-between items-center">
+                                                    <span className="text-[10px] uppercase text-textMuted font-bold">Totale</span>
+                                                    <span className="text-xl font-mono font-bold">{distance || '0'} <span className="text-sm text-gray-500">km</span></span>
+                                                </div>
+
+                                                <div><label className="input-label">Nome</label><input type="text" value={recordName} onChange={e => setRecordName(e.target.value)} className="input-field" placeholder="Es. Lavoro" /></div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div><label className="input-label">Start</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="input-field" /></div>
+                                                    <div><label className="input-label">End</label><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="input-field" /></div>
+                                                </div>
+                                                <div>
+                                                    <label className="input-label">Auto</label>
+                                                    <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="input-field">
+                                                        <option value="">Seleziona...</option>
+                                                        {vehicles.map(v => <option key={v.id} value={v.id}>{v.make} {v.model}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="text-center text-accent text-xs font-bold">{calculatedDuration && `Durata: ${calculatedDuration}`}</div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="bg-black/20 p-3 rounded-xl text-center border border-white/5 flex justify-between items-center">
+                                                    <span className="text-[10px] uppercase text-cyan-400 font-bold">Distanza</span>
+                                                    <span className="text-xl font-mono font-bold">{distance || '0'} <span className="text-sm text-gray-500">km</span></span>
+                                                </div>
+                                                <div><label className="input-label">Nome</label><input type="text" value={walkName} onChange={e => setWalkName(e.target.value)} className="input-field" placeholder="Es. Passeggiata" /></div>
+                                            </>
+                                        )}
+
+                                        <button onClick={saveRecord} className="w-full btn-primary py-3 mt-4">
+                                            {editingId ? 'Aggiorna' : 'Salva'}
+                                        </button>
                                     </div>
-                                    <button onClick={saveRecord} className="w-full mt-4 btn-primary bg-white text-black hover:bg-gray-200">
-                                        {editingId ? "Aggiorna Percorso" : "Salva Percorso"}
-                                    </button>
                                 </div>
-                            )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* DATA */}
-                {activeTab === 'data' && (
-                    <div className="bento-card p-12 max-w-2xl mx-auto mt-8 flex flex-col items-center text-center">
-                        <div className="text-4xl mb-4">💾</div>
-                        <h2 className="text-2xl font-bold mb-2">Import / Export</h2>
-                        <p className="text-textMuted mb-8 text-sm">Gestione backup e ripristino dati.</p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                            <button onClick={exportData} className="btn-secondary h-24 flex flex-col items-center justify-center gap-2 border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50">
-                                <span className="text-emerald-500 font-bold">ESPORTA JSON</span>
-                                <span className="text-xs text-emerald-500/50">Scarica file .json</span>
-                            </button>
-
-                            <label className="btn-secondary h-24 flex flex-col items-center justify-center gap-2 border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/10 hover:border-cyan-500/50 cursor-pointer">
-                                <span className="text-cyan-500 font-bold">IMPORTA JSON</span>
-                                <span className="text-xs text-cyan-500/50">Carica file .json</span>
-                                <input type="file" accept=".json" onChange={importData} className="hidden" />
-                            </label>
+                    {/* DATA */}
+                    {activeTab === 'data' && (
+                        <div className="flex flex-col items-center justify-center h-full gap-6">
+                            <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                                <button onClick={exportData} className="btn-secondary py-8 flex flex-col items-center gap-2">
+                                    <span className="text-2xl">📤</span>
+                                    <span className="font-bold text-sm">Export JSON</span>
+                                </button>
+                                <button onClick={() => fileInputRef.current.click()} className="btn-secondary py-8 flex flex-col items-center gap-2">
+                                    <span className="text-2xl">📥</span>
+                                    <span className="font-bold text-sm">Import JSON</span>
+                                    <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={importData} />
+                                </button>
+                            </div>
+                            <p className="text-xs text-textMuted max-w-xs text-center">Scarica un backup dei tuoi viaggi o ripristinane uno precedente.</p>
                         </div>
-                    </div>
-                )}
+                    )}
+
+                </div>
 
             </div>
         </div>
