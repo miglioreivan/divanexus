@@ -348,7 +348,7 @@ export default function TripRecords() {
                 type: editorMode,
                 name: (isCar ? recordName : walkName) || "Senza Nome",
                 distance: parseFloat(distance || 0),
-                points,
+                points: points.map(p => ({ lat: p.lat, lng: p.lng })), // Ensure plain objects
                 updatedAt: new Date().toISOString()
             };
 
