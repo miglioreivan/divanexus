@@ -441,22 +441,39 @@ export default function TripRecords() {
                 // Helper to clean and parse fields
                 const processRecord = (record) => {
                     const { id, ...rest } = record;
-                    // Detect and fix double-stringified fields common in legacy exports
+
+                    // 1. Detect and parse stringified JSON fields
                     ['route', 'waypoints', 'mapSnapshot', 'stops'].forEach(field => {
                         if (typeof rest[field] === 'string') {
                             try {
-                                const parsed = JSON.parse(rest[field]);
-                                rest[field] = parsed;
+                                rest[field] = JSON.parse(rest[field]);
                             } catch (e) {
-                                console.warn(`Could not parse field ${field} for record ${id || 'unknown'}`, e);
+                                console.warn(`Could not parse field ${field}`, e);
                             }
                         }
                     });
 
-                    // Specific fix for "waypoints" which might be "[[lat,lng],...]" string or object
-                    if (Array.isArray(rest.waypoints) && rest.waypoints.length > 0 && typeof rest.waypoints[0] === 'string') {
-                        // Some legacy formats might be mixed, but usually it's JSON string or array of arrays
-                    }
+                    // 2. Helper to convert [lat, lng] -> {lat, lng} (Firestore rejects nested arrays)
+                    const normalizeCoords = (val) => {
+                        if (Array.isArray(val)) {
+                            // Check if it's a coord pair [num, num]
+                            if (val.length === 2 && typeof val[0] === 'number' && typeof val[1] === 'number') {
+                                return { lat: val[0], lng: val[1] };
+                            }
+                            // Recursive for array of coords
+                            return val.map(normalizeCoords);
+                        }
+                        if (val && typeof val === 'object') {
+                            // Recursive for object properties
+                            Object.keys(val).forEach(k => val[k] = normalizeCoords(val[k]));
+                        }
+                        return val;
+                    };
+
+                    // 3. Apply normalization to critical fields that definitely contain coordinates
+                    if (rest.waypoints) rest.waypoints = normalizeCoords(rest.waypoints);
+                    if (rest.route) rest.route = normalizeCoords(rest.route);
+                    if (rest.mapSnapshot) rest.mapSnapshot = normalizeCoords(rest.mapSnapshot);
 
                     return rest;
                 };
