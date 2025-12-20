@@ -62,6 +62,7 @@ export default function TripRecords() {
     const markersRef = useRef([]);
     const polylineRef = useRef(null);
     const viewPolylineRef = useRef(null);
+    const fileInputRef = useRef(null); // Added for Backup Import functionality
 
     // --- INIT ---
     useEffect(() => {
