@@ -80,22 +80,7 @@ export default function AppPage() {
                         </div>
                     </Link>
 
-                    <Link to="/drive-logbook" className="bento-card p-8 group hover:scale-[1.02] hover:border-emerald-500/30 cursor-pointer block no-underline relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span className="text-9xl">⏱️</span>
-                        </div>
 
-                        <div className="relative z-10 flex flex-col h-full justify-between min-h-[180px]">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-2xl group-hover:bg-emerald-500 group-hover:text-white transition-colors border border-emerald-500/20">
-                                ⏱️
-                            </div>
-
-                            <div>
-                                <h2 className="text-2xl font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors">Trip Records</h2>
-                                <p className="text-sm text-textMuted">Record Tempi, Percorsi e Statistiche.</p>
-                            </div>
-                        </div>
-                    </Link>
 
                     <Link to="/car-finance" className="bento-card p-8 group hover:scale-[1.02] hover:border-amber-500/30 cursor-pointer block no-underline relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
