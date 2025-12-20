@@ -90,14 +90,20 @@ export default function TripRecords() {
     }, [navigate]);
 
     const normalizePoints = (data) => {
-        // Handle legacy "wayPoints" or direct "points"
-        let raw = data.points || data.wayPoints || [];
+        // Handle legacy "wayPoints", "route" or direct "points"
+        let raw = data.points || data.wayPoints || data.route || [];
+
+        // Legacy: sometimes 'route' was an object wrapper or 'my_waypoints' exists
+        if (data.my_waypoints && Array.isArray(data.my_waypoints)) raw = data.my_waypoints;
+
         if (!Array.isArray(raw)) return [];
+
         // Convert [lat,lng] arrays to {lat,lng} objects if needed
         return raw.map(p => {
             if (Array.isArray(p)) return { lat: p[0], lng: p[1] };
-            return p;
-        }).filter(p => p && typeof p.lat === 'number');
+            if (p && typeof p.lat === 'number') return p;
+            return null;
+        }).filter(p => p !== null);
     };
 
     const loadData = (uid) => {
@@ -116,8 +122,8 @@ export default function TripRecords() {
                     points: normalizePoints(item) // Fix legacy data
                 };
             });
-            setCarRecords(data.filter(t => t.type === 'car' || !t.type).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')));
-            setWalkRecords(data.filter(t => t.type === 'walk').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')));
+            setCarRecords(data.filter(t => t.type === 'car' || !t.type));
+            setWalkRecords(data.filter(t => t.type === 'walk'));
             setLoading(false);
         });
 
@@ -127,6 +133,11 @@ export default function TripRecords() {
             setTracks(t);
         });
     };
+
+    // Filter State
+    const [textFilter, setTextFilter] = useState('');
+    const [sortMode, setSortMode] = useState('date_desc'); // date_desc, date_asc, time_desc, speed_desc
+    const [showOnlyTracks, setShowOnlyTracks] = useState(false);
 
     // --- LIVE TRACKING ---
     const startLiveTrip = () => {
@@ -582,36 +593,98 @@ export default function TripRecords() {
 
                     {['car_records', 'walk_paths', 'saved_tracks'].includes(activeTab) && (
                         <div className="flex flex-col h-full">
-                            <h2 className="text-xl font-bold text-white mb-6">
-                                {activeTab === 'car_records' ? 'Storico Viaggi Auto' :
-                                    activeTab === 'walk_paths' ? 'Storico Camminate' : 'Tracciati Salvati'}
-                            </h2>
+                            <div className="flex flex-col gap-4 mb-6">
+                                <h2 className="text-xl font-bold text-white">
+                                    {activeTab === 'car_records' ? 'Storico Viaggi Auto' :
+                                        activeTab === 'walk_paths' ? 'Storico Camminate' : 'Tracciati Salvati'}
+                                </h2>
+
+                                {/* FILTERS */}
+                                <div className="bg-white/5 p-3 rounded-xl flex flex-col md:flex-row gap-3">
+                                    <input
+                                        type="text"
+                                        placeholder="🔍 Cerca..."
+                                        value={textFilter}
+                                        onChange={e => setTextFilter(e.target.value)}
+                                        className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-accent outline-none flex-1"
+                                    />
+                                    <select
+                                        value={sortMode}
+                                        onChange={e => setSortMode(e.target.value)}
+                                        className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-textMuted focus:border-accent outline-none"
+                                    >
+                                        <option value="date_desc">📅 Data (Recenti)</option>
+                                        <option value="date_asc">📅 Data (Vecchi)</option>
+                                        <option value="time_desc">⏱️ Durata (Lunghi)</option>
+                                        <option value="speed_desc">🚀 Velocità (Veloci)</option>
+                                        <option value="dist_desc">📏 Distanza (Lunghi)</option>
+                                    </select>
+                                    {activeTab === 'car_records' && (
+                                        <button
+                                            onClick={() => setShowOnlyTracks(!showOnlyTracks)}
+                                            className={`px-3 py-2 rounded-lg text-xs font-bold border ${showOnlyTracks ? 'bg-purple-500/20 text-purple-400 border-purple-500/50' : 'bg-black/50 text-textMuted border-white/10'}`}
+                                        >
+                                            🚩 Solo Tracciati
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="overflow-y-auto space-y-3 flex-1 pr-2 custom-scrollbar">
-                                {(activeTab === 'car_records' ? carRecords : activeTab === 'walk_paths' ? walkRecords : tracks).map(r => (
-                                    <div key={r.id} onClick={() => activeTab !== 'saved_tracks' && setViewModalData(r)} className="bg-bgApp p-4 rounded-xl border border-white/5 group hover:border-accent/50 transition-all cursor-pointer">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-bold text-white">{r.name || "Nessun Nome"}</h3>
-                                                <div className="text-xs text-textMuted mt-1">
-                                                    {activeTab === 'saved_tracks' ? 'Tracciato Riusabile' : `${new Date(r.createdAt || r.date).toLocaleDateString()} • ${r.durationStr || ''}`}
+                                {(() => {
+                                    let list = activeTab === 'car_records' ? carRecords : (activeTab === 'walk_paths' ? walkRecords : tracks);
+
+                                    // Filter
+                                    if (textFilter) {
+                                        const q = textFilter.toLowerCase();
+                                        list = list.filter(r => (r.name || '').toLowerCase().includes(q));
+                                    }
+                                    if (activeTab === 'car_records' && showOnlyTracks) {
+                                        list = list.filter(r => r.trackId);
+                                    }
+
+                                    // Sort
+                                    list = [...list].sort((a, b) => {
+                                        if (sortMode === 'date_desc') return (b.createdAt || '').localeCompare(a.createdAt || '');
+                                        if (sortMode === 'date_asc') return (a.createdAt || '').localeCompare(b.createdAt || '');
+                                        if (sortMode === 'dist_desc') return (b.distance || 0) - (a.distance || 0);
+                                        if (sortMode === 'time_desc') return (b.durationMs || 0) - (a.durationMs || 0);
+                                        if (sortMode === 'speed_desc') {
+                                            const speedA = (a.distance && a.durationMs) ? (a.distance / (a.durationMs / 3600000)) : 0;
+                                            const speedB = (b.distance && b.durationMs) ? (b.distance / (b.durationMs / 3600000)) : 0;
+                                            return speedB - speedA;
+                                        }
+                                        return 0;
+                                    });
+
+                                    if (list.length === 0) return <div className="text-center text-textMuted py-10 italic">Nessun risultato.</div>;
+
+                                    return list.map(r => (
+                                        <div key={r.id} onClick={() => activeTab !== 'saved_tracks' && setViewModalData(r)} className="bg-bgApp p-4 rounded-xl border border-white/5 group hover:border-accent/50 transition-all cursor-pointer">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-bold text-white">{r.name || "Nessun Nome"}</h3>
+                                                    <div className="text-xs text-textMuted mt-1">
+                                                        {activeTab === 'saved_tracks' ? 'Tracciato Riusabile' : `${new Date(r.createdAt || r.date).toLocaleDateString()} • ${r.durationStr || ''}`}
+                                                    </div>
+                                                </div>
+                                                <div className="text-accent font-mono font-bold text-lg">{r.distance} km</div>
+                                            </div>
+
+                                            <div className="mt-3 pt-3 border-t border-white/5 flex justify-between items-center" onClick={e => e.stopPropagation()}>
+                                                <div className="flex gap-2">
+                                                    {activeTab === 'saved_tracks' && (
+                                                        <button onClick={() => { loadTrack(r.id); setActiveTab('editor'); }} className="text-xs font-bold text-purple-400 hover:text-white bg-purple-500/10 px-2 py-1 rounded">USA</button>
+                                                    )}
+                                                </div>
+                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {activeTab !== 'saved_tracks' && <button onClick={() => handleEditTrip(r)} className="text-xs font-bold text-accent hover:underline">MODIFICA</button>}
+                                                    <button onClick={() => deleteItem(activeTab === 'saved_tracks' ? 'tracks' : 'trips', r.id)} className="text-xs font-bold text-red-500 hover:underline">ELIMINA</button>
                                                 </div>
                                             </div>
-                                            <div className="text-accent font-mono font-bold text-lg">{r.distance} km</div>
                                         </div>
-
-                                        <div className="mt-3 pt-3 border-t border-white/5 flex justify-between items-center" onClick={e => e.stopPropagation()}>
-                                            <div className="flex gap-2">
-                                                {activeTab === 'saved_tracks' && (
-                                                    <button onClick={() => { loadTrack(r.id); setActiveTab('editor'); }} className="text-xs font-bold text-purple-400 hover:text-white bg-purple-500/10 px-2 py-1 rounded">USA</button>
-                                                )}
-                                            </div>
-                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {activeTab !== 'saved_tracks' && <button onClick={() => handleEditTrip(r)} className="text-xs font-bold text-accent hover:underline">MODIFICA</button>}
-                                                <button onClick={() => deleteItem(activeTab === 'saved_tracks' ? 'tracks' : 'trips', r.id)} className="text-xs font-bold text-red-500 hover:underline">ELIMINA</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))
+                                })()}
                             </div>
                             {activeTab === 'saved_tracks' && (
                                 <button onClick={() => { handleReset(); setActiveTab('editor'); setIsSavingTrack(true); }} className="mt-4 w-full btn-secondary text-purple-400 border-purple-500/20 hover:bg-purple-500/10">
