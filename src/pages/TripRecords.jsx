@@ -101,6 +101,14 @@ export default function TripRecords() {
             }
             setTimeout(() => mapInstance.current?.invalidateSize(), 200);
         }
+
+        // Cleanup when leaving editor tab
+        return () => {
+            if (activeTab === 'editor' && mapInstance.current) {
+                mapInstance.current.remove();
+                mapInstance.current = null;
+            }
+        };
     }, [activeTab]);
 
     // Draw Editor Map items
@@ -143,20 +151,20 @@ export default function TripRecords() {
     useEffect(() => {
         if (viewModalData && viewMapContainerRef.current) {
             if (!viewMapInstance.current) {
-                viewMapInstance.current = L.map(viewMapContainerRef.current);
+                // Initialize with default view to avoid "Set map center and zoom first" error
+                viewMapInstance.current = L.map(viewMapContainerRef.current).setView([41.9028, 12.4964], 13);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(viewMapInstance.current);
             }
-            // Reset view
+
+            // Reset layers
             if (viewPolylineRef.current) viewPolylineRef.current.remove();
+            viewMapInstance.current.eachLayer((layer) => {
+                if (layer instanceof L.Marker) layer.remove();
+            });
 
             // Draw
             const p = viewModalData.points || [];
             if (p.length > 0) {
-                // If it was a car route calculated by API, we might want to store the full geometry? 
-                // Currently we store "points" (waypoints). 
-                // Ideally we should re-calc or store geometry. For now, straight lines between WPs is the backup fallback, 
-                // but if we want premium, we might need to store the encoded polyline.
-                // Given constraints, let's draw straight lines between WPs and zoom bounds.
                 viewPolylineRef.current = L.polyline(p, { color: viewModalData.type === 'walk' ? '#06b6d4' : '#10b981', weight: 5 }).addTo(viewMapInstance.current);
                 viewMapInstance.current.fitBounds(viewPolylineRef.current.getBounds(), { padding: [50, 50] });
 
@@ -164,10 +172,21 @@ export default function TripRecords() {
                 p.forEach((pt, i) => {
                     L.marker([pt.lat, pt.lng]).addTo(viewMapInstance.current);
                 });
+            } else {
+                // If no points, just keep default view or try to center somewhere? 
+                // Default view is safely set on init.
             }
 
             setTimeout(() => viewMapInstance.current.invalidateSize(), 200);
         }
+
+        // Cleanup when modal closes
+        return () => {
+            if (!viewModalData && viewMapInstance.current) {
+                viewMapInstance.current.remove();
+                viewMapInstance.current = null;
+            }
+        };
     }, [viewModalData]);
 
 
