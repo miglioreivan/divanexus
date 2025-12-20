@@ -51,11 +51,11 @@ export default function TripRecords() {
     const [selectedVehicle, setSelectedVehicle] = useState('');
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
-    const [walkName, setWalkName] = useState('');
-    const [selectedTrackId, setSelectedTrackId] = useState('');
+    const [avgSpeed, setAvgSpeed] = useState('');
 
-    // Refs
-    const mapContainerRef = useRef(null);
+    // ... (existing refs)
+
+
     const viewMapContainerRef = useRef(null);
     const mapInstance = useRef(null);
     const viewMapInstance = useRef(null);
@@ -795,12 +795,18 @@ export default function TripRecords() {
                                                     <div><label className="input-label">Inizio</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="input-field" /></div>
                                                     <div><label className="input-label">Fine</label><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="input-field" /></div>
                                                 </div>
-                                                <div>
-                                                    <label className="input-label">Veicolo</label>
-                                                    <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="input-field">
-                                                        <option value="">Seleziona...</option>
-                                                        {vehicles.map(v => <option key={v.id} value={v.id}>{v.make} {v.model}</option>)}
-                                                    </select>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="input-label">Veicolo</label>
+                                                        <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="input-field">
+                                                            <option value="">Seleziona...</option>
+                                                            {vehicles.map(v => <option key={v.id} value={v.id}>{v.make} {v.model}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="input-label">Velocità Media (km/h)</label>
+                                                        <input type="number" value={avgSpeed} onChange={e => setAvgSpeed(e.target.value)} className="input-field" placeholder="Es. 120" />
+                                                    </div>
                                                 </div>
                                                 <div className="text-center text-accent text-xs font-bold pt-1">{calculatedDuration && `Durata: ${calculatedDuration}`}</div>
                                             </>
