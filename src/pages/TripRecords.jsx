@@ -663,13 +663,37 @@ export default function TripRecords() {
 
                                     if (list.length === 0) return <div className="text-center text-textMuted py-10 italic">Nessun risultato.</div>;
 
+                                    // --- HELPERS ---
+                                    const formatDate = (r) => {
+                                        if (!r) return "-";
+                                        const val = r.createdAt || r.date || r.timestamp;
+                                        if (!val) return "-";
+                                        const d = new Date(val);
+                                        return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+                                    };
+
+                                    const getVehicleName = (r) => {
+                                        if (!r) return "?";
+                                        if (r.vehicleName && r.vehicleName !== "?" && r.vehicleName !== "Sconosciuto") return r.vehicleName;
+                                        // Lookup
+                                        if (r.vehicleId) {
+                                            const v = vehicles.find(x => x.id === r.vehicleId);
+                                            if (v) return `${v.make} ${v.model}`;
+                                        }
+                                        return "Sconosciuto";
+                                    };
+
+                                    // --- RENDER ---
+                                    // ... existing ...
+
                                     return list.map(r => (
                                         <div key={r.id} onClick={() => activeTab !== 'saved_tracks' && setViewModalData(r)} className="bg-bgApp p-4 rounded-xl border border-white/5 group hover:border-accent/50 transition-all cursor-pointer">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <h3 className="font-bold text-white">{r.name || "Nessun Nome"}</h3>
-                                                    <div className="text-xs text-textMuted mt-1">
-                                                        {activeTab === 'saved_tracks' ? 'Tracciato Riusabile' : `${new Date(r.createdAt || r.date).toLocaleDateString()} • ${r.durationStr || ''}`}
+                                                    <div className="text-xs text-textMuted mt-1 flex flex-col gap-0.5">
+                                                        <span>{formatDate(r)} • {r.durationStr || (r.durationMs ? `${Math.floor(r.durationMs / 60000)} min` : '--')}</span>
+                                                        {r.avgSpeed && <span className="text-accent font-mono">⚡ {r.avgSpeed} km/h</span>}
                                                     </div>
                                                 </div>
                                                 <div className="text-accent font-mono font-bold text-lg">{r.distance} km</div>
@@ -851,7 +875,7 @@ export default function TripRecords() {
                             <div className="flex justify-between items-start mb-6">
                                 <div>
                                     <h3 className="text-2xl font-bold text-white">{viewModalData.name}</h3>
-                                    <p className="text-sm text-textMuted">{new Date(viewModalData.createdAt).toLocaleDateString()}</p>
+                                    <p className="text-sm text-textMuted">{formatDate(viewModalData)}</p>
                                 </div>
                                 <button onClick={() => setViewModalData(null)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20">✕</button>
                             </div>
@@ -862,14 +886,19 @@ export default function TripRecords() {
                                 </div>
                                 {viewModalData.type === 'car' && (
                                     <>
-                                        <div className="bento-card p-4">
-                                            <div className="text-xs text-textMuted uppercase font-bold">Durata</div>
-                                            <div className="text-xl font-bold text-white">{viewModalData.durationStr || '--'}</div>
-                                            <div className="text-xs text-gray-500 mt-1">{viewModalData.startTime} - {viewModalData.endTime}</div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bento-card p-4">
+                                                <div className="text-xs text-textMuted uppercase font-bold">Durata</div>
+                                                <div className="text-xl font-bold text-white">{viewModalData.durationStr || '--'}</div>
+                                            </div>
+                                            <div className="bento-card p-4">
+                                                <div className="text-xs text-textMuted uppercase font-bold">Velocità</div>
+                                                <div className="text-xl font-bold text-white">{viewModalData.avgSpeed ? `${viewModalData.avgSpeed} km/h` : '--'}</div>
+                                            </div>
                                         </div>
                                         <div className="bento-card p-4">
                                             <div className="text-xs text-textMuted uppercase font-bold">Veicolo</div>
-                                            <div className="text-lg font-bold text-white">{viewModalData.vehicleName || 'Sconosciuto'}</div>
+                                            <div className="text-lg font-bold text-white">{getVehicleName(viewModalData)}</div>
                                         </div>
                                     </>
                                 )}
