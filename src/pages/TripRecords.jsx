@@ -251,23 +251,33 @@ export default function TripRecords() {
         };
     }, [viewModalData]);
 
+    const decodePolyline = (e) => {
+        var t = [], n = 0, r = 0, i = 0; while (n < e.length) { var s = 0, o = 0, u; do { u = e.charCodeAt(n++) - 63, o |= (31 & u) << s, s += 5 } while (u >= 32); var a = 1 & o ? ~(o >> 1) : o >> 1; r += a, s = 0, o = 0; do { u = e.charCodeAt(n++) - 63, o |= (31 & u) << s, s += 5 } while (u >= 32); var f = 1 & o ? ~(o >> 1) : o >> 1; i += f, t.push([r / 1e5, i / 1e5]) } return t;
+    };
+
     const calculateRoute = async () => {
         if (points.length < 2) return;
         try {
             const coords = points.map(p => [p.lng, p.lat]);
-            const res = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
+            // Use standard endpoint instead of geojson to match legacy key permissions
+            const res = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
                 method: 'POST',
                 headers: { 'Authorization': API_KEY, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ coordinates: coords })
             });
             const json = await res.json();
-            if (json.features?.[0]) {
-                const feat = json.features[0];
-                const latlngs = feat.geometry.coordinates.map(c => [c[1], c[0]]);
+
+            if (json.routes && json.routes.length) {
+                const route = json.routes[0];
+                const poly = decodePolyline(route.geometry); // Decode the string geometry
+
                 if (polylineRef.current) polylineRef.current.remove();
-                polylineRef.current = L.polyline(latlngs, { color: '#10b981', weight: 5 }).addTo(mapInstance.current);
+                polylineRef.current = L.polyline(poly, { color: '#10b981', weight: 5 }).addTo(mapInstance.current);
                 mapInstance.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
-                setDistance((feat.properties.summary.distance / 1000).toFixed(2));
+
+                setDistance((route.summary.distance / 1000).toFixed(2));
+            } else {
+                throw new Error("Nessuna rotta trovata");
             }
         } catch (e) { alert("API Error: " + e.message); }
     };
@@ -385,6 +395,16 @@ export default function TripRecords() {
     return (
         <div className="min-h-screen p-4 md:p-8 flex items-center justify-center bg-bgApp transition-opacity duration-300" style={pageStyle}>
 
+            {/* Nav - Fixed Top Right as requested */}
+            <div className="fixed top-6 right-6 z-50 flex gap-2">
+                <Link to="/app" className="flex items-center gap-2 bg-[#18181b] hover:bg-[#27272a] border border-white/5 text-textMuted hover:text-white px-4 py-2 rounded-full text-xs font-semibold transition-all no-underline shadow-lg">
+                    🏠 Home
+                </Link>
+                <button onClick={() => signOut(auth).then(() => navigate('/'))} className="flex items-center gap-2 bg-[#18181b] hover:bg-red-500/10 border border-white/5 text-textMuted hover:text-red-400 px-4 py-2 rounded-full text-xs font-semibold transition-all shadow-lg">
+                    Esci
+                </button>
+            </div>
+
             <div className="max-w-7xl w-full grid grid-cols-1 md:grid-cols-3 gap-6 h-[85vh]">
 
                 {/* SIDEBAR */}
@@ -394,11 +414,6 @@ export default function TripRecords() {
                         <div>
                             <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Trip<span className="text-accent">Records</span></h1>
                             <p className="text-textMuted text-xs font-medium uppercase tracking-widest">Diario di Viaggio V2</p>
-                        </div>
-                        {/* Mobile Nav Actions */}
-                        <div className="flex gap-2">
-                            <Link to="/app" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20">🏠</Link>
-                            <button onClick={() => signOut(auth).then(() => navigate('/'))} className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500/20">🚪</button>
                         </div>
                     </div>
 
