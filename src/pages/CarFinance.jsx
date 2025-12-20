@@ -22,7 +22,7 @@ export default function CarFinance() {
     const [tolls, setTolls] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [vehicles, setVehicles] = useState([]);
-    const [trips, setTrips] = useState([]); // From DriveLogbook for linking
+
 
     // Modal States
     const [isTollModalOpen, setIsTollModalOpen] = useState(false);
@@ -33,7 +33,6 @@ export default function CarFinance() {
     const [tollEntry, setTollEntry] = useState('');
     const [tollExit, setTollExit] = useState('');
     const [tollCost, setTollCost] = useState('');
-    const [tollTripId, setTollTripId] = useState('');
     const [tollDate, setTollDate] = useState(new Date().toISOString().split('T')[0]);
     const [tollVehicle, setTollVehicle] = useState('');
 
@@ -62,7 +61,7 @@ export default function CarFinance() {
 
     useEffect(() => {
         let unsub = () => { };
-        let unsubTrips = () => { };
+
 
         const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
             if (currentUser) {
@@ -101,7 +100,7 @@ export default function CarFinance() {
         return () => {
             unsubAuth();
             unsub();
-            unsubTrips();
+
         };
     }, [navigate]);
 
@@ -225,7 +224,6 @@ export default function CarFinance() {
             exit: tollExit,
             cost: parseFloat(tollCost),
             date: tollDate,
-            tripId: tollTripId || null,
             vehicleId: tollVehicle || null
         };
 
@@ -249,7 +247,7 @@ export default function CarFinance() {
         setTollCost(t.cost);
         setTollDate(t.date);
         setTollVehicle(t.vehicleId || '');
-        setTollTripId(t.tripId || '');
+
         setIsTollModalOpen(true);
     };
 
@@ -304,7 +302,7 @@ export default function CarFinance() {
 
     const resetTollForm = () => {
         setEditingTollId(null);
-        setTollEntry(''); setTollExit(''); setTollCost(''); setTollTripId(''); setTollDate(new Date().toISOString().split('T')[0]);
+        setTollEntry(''); setTollExit(''); setTollCost(''); setTollDate(new Date().toISOString().split('T')[0]);
         setTollVehicle(vehicles.length > 0 ? vehicles[0].id : '');
     };
 
@@ -384,7 +382,6 @@ export default function CarFinance() {
                         <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
                             {getFilteredTolls().length === 0 && <p className="text-textMuted text-sm italic text-center py-4">Nessun pedaggio trovato.</p>}
                             {getFilteredTolls().map(t => {
-                                const linkedTrip = trips.find(tr => tr.docId === t.tripId);
                                 const linkedVehicle = vehicles.find(v => v.id == t.vehicleId);
                                 return (
                                     <div key={t.id} className="bg-white/5 p-4 rounded-xl border border-white/5 flex justify-between items-start group hover:border-accent/30 transition-colors">
@@ -394,7 +391,7 @@ export default function CarFinance() {
                                             </div>
                                             <div className="text-xs text-textMuted flex flex-col gap-1">
                                                 <span>📅 {new Date(t.date).toLocaleDateString()}</span>
-                                                {linkedTrip && <span className="text-accent">🔗 {linkedTrip.startLoc} - {linkedTrip.endLoc}</span>}
+
                                                 {linkedVehicle ? <span className="text-accent/80">🚗 {linkedVehicle.model}</span> : <span className="text-white/30">🚗 Altro/Nessuno</span>}
                                             </div>
                                         </div>
@@ -531,17 +528,7 @@ export default function CarFinance() {
                                         {vehicles.map(v => <option key={v.id} value={v.id}>{v.model} ({v.plate})</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="input-label">Collega Viaggio (Opzionale)</label>
-                                    <select value={tollTripId} onChange={e => setTollTripId(e.target.value)} className="input-field">
-                                        <option value="">-- Seleziona Viaggio --</option>
-                                        {trips.map(t => (
-                                            <option key={t.docId} value={t.docId}>
-                                                {t.date} | {t.startLoc} ➝ {t.endLoc}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+
                             </div>
                             <div className="flex gap-3 mt-6">
                                 <button type="button" onClick={() => setIsTollModalOpen(false)} className="flex-1 btn-secondary text-sm">Annulla</button>
