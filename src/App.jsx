@@ -4,7 +4,6 @@ import AppPage from './pages/AppPage';
 
 import LoveTracker from './pages/LoveTracker';
 import University from './pages/University';
-import CarFinance from './pages/CarFinance';
 import AdminPage from './pages/AdminPage';
 
 function App() {
@@ -16,7 +15,6 @@ function App() {
 
         <Route path="/love-tracker" element={<LoveTracker />} />
         <Route path="/university" element={<University />} />
-        <Route path="/car-finance" element={<CarFinance />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
