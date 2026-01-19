@@ -17,9 +17,11 @@ export default function LoveTracker() {
 
     // Form State
     const [location, setLocation] = useState('');
+    const [partner, setPartner] = useState('');
     const [protection, setProtection] = useState('Nessuna');
     const [orgasm, setOrgasm] = useState(false);
     const [toys, setToys] = useState(false);
+    const [editingIndex, setEditingIndex] = useState(null);
 
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
@@ -57,19 +59,30 @@ export default function LoveTracker() {
 
     const handleSaveEntry = async (e) => {
         e.preventDefault();
-        const obj = { location, protection, orgasm, toys };
+        const obj = { location, partner, protection, orgasm, toys };
         const newData = { ...dataStore };
         if (!newData[selectedDateKey]) newData[selectedDateKey] = [];
-        newData[selectedDateKey].push(obj);
+
+        if (editingIndex !== null) {
+            newData[selectedDateKey][editingIndex] = obj;
+        } else {
+            newData[selectedDateKey].push(obj);
+        }
 
         setDataStore(newData); // Optimistic update
         await saveToCloud(newData);
 
         // Reset form
+        resetForm();
+    };
+
+    const resetForm = () => {
         setLocation('');
+        setPartner('');
         setProtection('Nessuna');
         setOrgasm(false);
         setToys(false);
+        setEditingIndex(null);
     };
 
     const handleDeleteEntry = async (index) => {
@@ -88,6 +101,16 @@ export default function LoveTracker() {
 
         setDataStore(newData);
         await saveToCloud(newData);
+        if (editingIndex === index) resetForm();
+    };
+
+    const handleEditEntry = (index, entry) => {
+        setEditingIndex(index);
+        setLocation(entry.location);
+        setPartner(entry.partner || '');
+        setProtection(entry.protection);
+        setOrgasm(entry.orgasm);
+        setToys(entry.toys);
     };
 
     const calculateStreak = () => {
@@ -117,14 +140,23 @@ export default function LoveTracker() {
 
     const getStats = () => {
         let s = 0, o = 0;
+        const partners = new Set();
+
         Object.values(dataStore).forEach(arr => {
             s += arr.length;
-            arr.forEach(e => { if (e.orgasm) o++; });
+            arr.forEach(e => {
+                if (e.orgasm) o++;
+                if (e.partner && e.partner.trim() !== '') {
+                    partners.add(e.partner.trim().toLowerCase());
+                }
+            });
         });
+
         return {
             total: s,
             rate: s === 0 ? '0%' : Math.round((o / s) * 100) + '%',
-            streak: calculateStreak()
+            streak: calculateStreak(),
+            bodyCount: partners.size
         };
     };
 
@@ -140,10 +172,7 @@ export default function LoveTracker() {
         setSelectedDateKey(dateKey);
         setIsModalOpen(true);
         // Reset form on open
-        setLocation('');
-        setProtection('Nessuna');
-        setOrgasm(false);
-        setToys(false);
+        resetForm();
     };
 
     const exportData = () => {
@@ -244,6 +273,10 @@ export default function LoveTracker() {
                                 <div className="flex items-center justify-between"><p className="text-xs text-textMuted uppercase font-bold tracking-wider">Streak Record</p><span className="text-xl">⚡</span></div>
                                 <div className="flex items-end gap-2 mt-2"><p className="text-3xl font-bold text-yellow-500">{stats.streak}</p><p className="text-[10px] text-textMuted mb-1 uppercase font-bold">Giorni</p></div>
                             </div>
+                            <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
+                                <div className="flex items-center justify-between"><p className="text-xs text-textMuted uppercase font-bold tracking-wider">Body Count</p><span className="text-xl">👥</span></div>
+                                <div className="flex items-end gap-2 mt-2"><p className="text-3xl font-bold text-blue-400">{stats.bodyCount}</p><p className="text-[10px] text-textMuted mb-1 uppercase font-bold">Partner</p></div>
+                            </div>
                         </div>
                     </div>
                     <div className="mt-6 border-t border-white/5 pt-6">
@@ -292,9 +325,13 @@ export default function LoveTracker() {
                                     <div key={idx} className="bg-bgApp p-4 rounded-xl border border-white/5 flex justify-between items-center">
                                         <div>
                                             <div className="text-sm font-bold text-white">{entry.location}</div>
+                                            {entry.partner && <div className="text-xs text-white/70">Con: {entry.partner}</div>}
                                             <div className="text-xs text-textMuted">{entry.protection}</div>
                                         </div>
-                                        <button onClick={() => handleDeleteEntry(idx)} className="text-textMuted hover:text-red-500">✕</button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => handleEditEntry(idx, entry)} className="text-textMuted hover:text-accent">✎</button>
+                                            <button onClick={() => handleDeleteEntry(idx)} className="text-textMuted hover:text-red-500">✕</button>
+                                        </div>
                                     </div>
                                 ))
                             )}
@@ -302,13 +339,19 @@ export default function LoveTracker() {
 
                         {/* New Entry Form */}
                         <div className="bg-cardDark p-5 rounded-2xl border border-white/5">
-                            <h4 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-4">Nuova Attività</h4>
+                            <h4 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-4">{editingIndex !== null ? 'Modifica Attività' : 'Nuova Attività'}</h4>
                             <form onSubmit={handleSaveEntry} className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="input-label">Amore con</label>
+                                        <input type="text" value={partner} onChange={(e) => setPartner(e.target.value)} placeholder="Nome partner..." className="input-field" />
+                                    </div>
                                     <div>
                                         <label className="input-label">Luogo</label>
                                         <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Es. Letto" required className="input-field" />
                                     </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="input-label">Protezione</label>
                                         <select value={protection} onChange={(e) => setProtection(e.target.value)} className="input-field">
@@ -318,6 +361,9 @@ export default function LoveTracker() {
                                             <option value="PrEP">PrEP</option>
                                             <option value="Altro">Altro</option>
                                         </select>
+                                    </div>
+                                    <div className="flex flex-col justify-end">
+
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -330,7 +376,12 @@ export default function LoveTracker() {
                                         <input type="checkbox" checked={toys} onChange={() => { }} className="accent-accent w-4 h-4 rounded" />
                                     </div>
                                 </div>
-                                <button type="submit" className="w-full btn-primary text-sm py-4">Salva</button>
+                                <div className="flex gap-2">
+                                    {editingIndex !== null && (
+                                        <button type="button" onClick={resetForm} className="w-1/3 btn-secondary text-sm py-4">Annulla</button>
+                                    )}
+                                    <button type="submit" className="flex-1 btn-primary text-sm py-4">{editingIndex !== null ? 'Aggiorna' : 'Salva'}</button>
+                                </div>
                             </form>
                         </div>
                     </div>
