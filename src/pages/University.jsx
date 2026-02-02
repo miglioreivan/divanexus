@@ -300,6 +300,18 @@ export default function University() {
         return { totalCfu, weightedAvg: w, arithmeticAvg: a, percent };
     };
 
+    // Calculate sorted unique times for the grid view
+    const sortedTimes = [...new Set(uniData.schedule?.map(s => s.time) || [])].sort((a, b) => {
+        const getStart = (t) => {
+            const m = t.match(/(\d{1,2})[:.]/);
+            return m ? parseInt(m[1]) : 99;
+        };
+        const startA = getStart(a);
+        const startB = getStart(b);
+        if (startA !== startB) return startA - startB;
+        return a.localeCompare(b);
+    });
+
     const stats = getStats(isGuestView ? guestData : uniData);
 
     if (loading) return null;
@@ -506,11 +518,12 @@ export default function University() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {/* Mobile View (List) */}
+                        <div className="grid grid-cols-1 md:hidden gap-4">
                             {[1, 2, 3, 4, 5].map(day => (
                                 <div key={day} className="flex flex-col gap-3">
                                     <div className="text-xs font-bold text-textMuted uppercase text-center pb-2 border-b border-white/5">{["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"][day - 1]}</div>
-                                    <div className="flex flex-col gap-2 min-h-[100px]">
+                                    <div className="flex flex-col gap-2 min-h-[50px]">
                                         {uniData.schedule?.filter(x => x.day === day).map(x => {
                                             const s = uniData.subjects?.find(sub => sub.id === x.subjectId);
                                             return (
@@ -524,6 +537,48 @@ export default function University() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+
+                        {/* Desktop View (Time Grid) */}
+                        <div className="hidden md:grid grid-cols-[80px_1fr_1fr_1fr_1fr_1fr] gap-px bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
+                            {/* Header */}
+                            <div className="bg-cardDark p-3 flex items-center justify-center border-b border-r border-white/5"><span className="text-[10px] font-bold text-textMuted uppercase">Orario</span></div>
+                            {["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"].map((d, i) => (
+                                <div key={i} className="bg-cardDark p-3 flex items-center justify-center border-b border-r border-white/5 last:border-r-0">
+                                    <span className="text-[10px] font-bold text-white uppercase">{d}</span>
+                                </div>
+                            ))}
+
+                            {/* Body */}
+                            {sortedTimes.map(time => (
+                                <React.Fragment key={time}>
+                                    <div className="bg-cardDark p-3 border-b border-r border-white/5 text-[10px] font-bold text-accent flex items-center justify-center">
+                                        {time}
+                                    </div>
+                                    {[1, 2, 3, 4, 5].map(day => {
+                                        const classes = uniData.schedule?.filter(x => x.day === day && x.time === time) || [];
+                                        return (
+                                            <div key={day} className="bg-cardDark p-2 border-b border-r border-white/5 last:border-r-0 min-h-[80px] relative group">
+                                                {classes.map(c => {
+                                                    const s = uniData.subjects?.find(sub => sub.id === c.subjectId);
+                                                    return (
+                                                        <div key={c.id} className="bg-white/5 p-2 rounded-lg border border-white/5 h-full flex flex-col justify-between hover:bg-white/10 transition-colors">
+                                                            <div className="flex justify-between items-start">
+                                                                <span className="text-[10px] font-bold text-white line-clamp-3 leading-tight">{s ? s.name : '-'}</span>
+                                                                <button onClick={() => deleteClass(c.id)} className="opacity-0 group-hover:opacity-100 text-[10px] text-red-400 hover:text-red-300 transition-opacity ml-1">✕</button>
+                                                            </div>
+                                                            <div className="text-[9px] text-textMuted mt-1">{c.room}</div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </React.Fragment>
+                            ))}
+                            {sortedTimes.length === 0 && (
+                                <div className="col-span-6 p-8 text-center text-textMuted text-xs">Nessuna lezione registrata</div>
+                            )}
                         </div>
                     </div>
 
