@@ -21,6 +21,7 @@ export default function University() {
     const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
     const [isClassModalOpen, setIsClassModalOpen] = useState(false);
     const [showExamForm, setShowExamForm] = useState(false);
+    const [activeMenuId, setActiveMenuId] = useState(null); // Track active kebab menu
 
     // Form States
     const [newSubName, setNewSubName] = useState('');
@@ -42,6 +43,17 @@ export default function University() {
     const [deadDate, setDeadDate] = useState('');
 
     const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        // Click outside listener to close menus
+        const handleClickOutside = (event) => {
+            if (activeMenuId && !event.target.closest('.kebab-menu-container')) {
+                setActiveMenuId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [activeMenuId]);
 
     useEffect(() => {
         const sharedUid = searchParams.get('shared');
@@ -560,12 +572,32 @@ export default function University() {
                                     {uniData.exams?.map(e => {
                                         const s = uniData.subjects?.find(sub => sub.id === e.subjectId);
                                         return (
-                                            <tr key={e.id} className="hover:bg-white/5">
+                                            <tr key={e.id} className="hover:bg-white/5 relative">
                                                 <td className="px-4 py-3 font-mono text-xs text-textMuted">{new Date(e.date).toLocaleDateString()}</td>
                                                 <td className="px-4 py-3 font-medium text-white">{s ? s.name : '-'}</td>
                                                 <td className="px-4 py-3">{e.cfu}</td>
                                                 <td className="px-4 py-3 text-accent font-bold">{e.grade}{e.laude ? 'L' : ''}</td>
-                                                <td className="px-4 py-3 text-right"><button onClick={() => deleteExam(e.id)} className="text-red-400">✕</button></td>
+                                                <td className="px-4 py-3 text-right relative kebab-menu-container">
+                                                    <button
+                                                        onClick={() => setActiveMenuId(activeMenuId === e.id ? null : e.id)}
+                                                        className="text-textMuted hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+                                                    >
+                                                        ⋮
+                                                    </button>
+                                                    {activeMenuId === e.id && (
+                                                        <div className="absolute right-0 top-full mt-1 w-32 bg-cardDark border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
+                                                            <button
+                                                                onClick={() => {
+                                                                    deleteExam(e.id);
+                                                                    setActiveMenuId(null);
+                                                                }}
+                                                                className="w-full text-left px-4 py-3 text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                                                            >
+                                                                🗑️ Elimina
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
                                             </tr>
                                         );
                                     })}
