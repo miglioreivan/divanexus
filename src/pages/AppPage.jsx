@@ -1,18 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase'; // Ensure db is exported from firebase.js
+import { AVAILABLE_APPS } from '../constants';
 
 export default function AppPage() {
     const [loading, setLoading] = useState(true);
+    const [allowedApps, setAllowedApps] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (!user) {
                 navigate('/');
             } else {
-                setLoading(false);
+                try {
+                    // Fetch user specific data (allowed apps)
+                    const userSnap = await getDoc(doc(db, "users", user.uid));
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        // If allowedApps is undefined, default to ALL apps (allow everything for legacy/default)
+                        setAllowedApps(userData.allowedApps || AVAILABLE_APPS.map(a => a.id));
+                    } else {
+                        // Fallback if no user doc (shouldn't happen usually)
+                        setAllowedApps(AVAILABLE_APPS.map(a => a.id));
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                    // On error, safely default to showing nothing or everything? 
+                    // Let's show everything to avoid locking out on network glitches, or handle gracefully.
+                    // For now, default to all.
+                    setAllowedApps(AVAILABLE_APPS.map(a => a.id));
+                } finally {
+                    setLoading(false);
+                }
             }
         });
         return () => unsubscribe();
@@ -46,46 +68,42 @@ export default function AppPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                    <Link to="/love-tracker" className="bento-card p-8 group hover:scale-[1.02] hover:border-rose-500/30 cursor-pointer block no-underline relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span className="text-9xl">❤️</span>
+                    {AVAILABLE_APPS.filter(app => allowedApps.includes(app.id)).map(app => {
+                        const isLoveTracker = app.id === 'lovetracker';
+                        const hoverBorderColor = isLoveTracker ? 'hover:border-rose-500/30' : 'hover:border-indigo-500/30';
+                        const iconBgColor = isLoveTracker ? 'bg-rose-500/10 group-hover:bg-rose-500' : 'bg-indigo-500/10 group-hover:bg-indigo-500';
+                        const iconBorderHelper = isLoveTracker ? 'border-rose-500/20' : 'border-indigo-500/20';
+                        const titleColor = isLoveTracker ? 'group-hover:text-rose-400' : 'group-hover:text-indigo-400';
+
+                        return (
+                            <Link key={app.id} to={app.path} className={`bento-card p-8 group hover:scale-[1.02] ${hoverBorderColor} cursor-pointer block no-underline relative overflow-hidden`}>
+                                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <span className="text-9xl">{app.icon}</span>
+                                </div>
+
+                                <div className="relative z-10 flex flex-col h-full justify-between min-h-[180px]">
+                                    <div className={`w-12 h-12 rounded-2xl ${iconBgColor} flex items-center justify-center text-2xl group-hover:text-white transition-colors border ${iconBorderHelper}`}>
+                                        {app.icon}
+                                    </div>
+
+                                    <div>
+                                        <h2 className={`text-2xl font-bold text-white mb-1 ${titleColor} transition-colors`}>{app.name}</h2>
+                                        <p className="text-sm text-textMuted">{app.description}</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        );
+                    })}
+
+                    {AVAILABLE_APPS.filter(app => allowedApps.includes(app.id)).length === 0 && (
+                        <div className="col-span-full text-center text-textMuted py-10">
+                            Non hai accesso a nessuna applicazione. Contatta l'amministratore.
                         </div>
-
-                        <div className="relative z-10 flex flex-col h-full justify-between min-h-[180px]">
-                            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-2xl group-hover:bg-rose-500 group-hover:text-white transition-colors border border-rose-500/20">
-                                ❤️
-                            </div>
-
-                            <div>
-                                <h2 className="text-2xl font-bold text-white mb-1 group-hover:text-rose-400 transition-colors">Love Tracker</h2>
-                                <p className="text-sm text-textMuted">Diario intimo, statistiche e calendario attività.</p>
-                            </div>
-                        </div>
-                    </Link>
-
-                    <Link to="/university" className="bento-card p-8 group hover:scale-[1.02] hover:border-indigo-500/30 cursor-pointer block no-underline relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span className="text-9xl">🎓</span>
-                        </div>
-
-                        <div className="relative z-10 flex flex-col h-full justify-between min-h-[180px]">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-2xl group-hover:bg-indigo-500 group-hover:text-white transition-colors border border-indigo-500/20">
-                                🎓
-                            </div>
-
-                            <div>
-                                <h2 className="text-2xl font-bold text-white mb-1 group-hover:text-indigo-400 transition-colors">Università</h2>
-                                <p className="text-sm text-textMuted">Orario lezioni, libretto voti e scadenze.</p>
-                            </div>
-                        </div>
-                    </Link>
-
-
-
-
+                    )}
 
                 </div>
             </div>
         </div>
     );
 }
+

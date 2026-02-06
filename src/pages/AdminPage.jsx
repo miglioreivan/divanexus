@@ -4,6 +4,7 @@ import { signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswo
 import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import { auth, db, app as firebaseApp } from '../firebase';
+import { AVAILABLE_APPS } from '../constants';
 
 const ADMIN_UID = "vdeS2SIosTWqeauP0PaZIllEG1f2";
 
@@ -23,6 +24,7 @@ export default function AdminPage() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editUid, setEditUid] = useState('');
     const [editEmail, setEditEmail] = useState('');
+    const [editAllowedApps, setEditAllowedApps] = useState([]);
 
     const navigate = useNavigate();
 
@@ -138,12 +140,16 @@ export default function AdminPage() {
     const openEditModal = (u) => {
         setEditUid(u.uid);
         setEditEmail(u.email);
+        setEditAllowedApps(u.allowedApps || AVAILABLE_APPS.map(a => a.id));
         setIsEditModalOpen(true);
     };
 
     const saveEditUser = async () => {
         try {
-            await updateDoc(doc(db, "users", editUid), { email: editEmail });
+            await updateDoc(doc(db, "users", editUid), {
+                email: editEmail,
+                allowedApps: editAllowedApps
+            });
             setIsEditModalOpen(false);
             loadUsers();
         } catch (e) { alert("Errore: " + e.message); }
@@ -283,6 +289,30 @@ export default function AdminPage() {
                                 <label className="input-label">Email (Database)</label>
                                 <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} className="input-field" />
                                 <p className="text-[10px] text-textMuted mt-1">Nota: Modifica solo l'email visualizzata nel DB.</p>
+                            </div>
+
+                            <div>
+                                <label className="input-label mb-2 block">Applicazioni Abilitate</label>
+                                <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar">
+                                    {AVAILABLE_APPS.map(app => (
+                                        <label key={app.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-white/5 border border-transparent hover:border-white/10 transition-all select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={editAllowedApps.includes(app.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setEditAllowedApps(prev => [...prev, app.id]);
+                                                    } else {
+                                                        setEditAllowedApps(prev => prev.filter(id => id !== app.id));
+                                                    }
+                                                }}
+                                                className="accent-white w-4 h-4"
+                                            />
+                                            <span className="text-xl">{app.icon}</span>
+                                            <span className="text-sm text-white font-medium">{app.name}</span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                             <div className="flex gap-2 pt-2">
                                 <button onClick={() => setIsEditModalOpen(false)} className="flex-1 btn-secondary text-xs">Annulla</button>
