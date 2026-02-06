@@ -5,9 +5,12 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase'; // Ensure db is exported from firebase.js
 import { AVAILABLE_APPS } from '../constants';
 
+import { ADMIN_UID } from './AdminPage';
+
 export default function AppPage() {
     const [loading, setLoading] = useState(true);
     const [allowedApps, setAllowedApps] = useState([]);
+    const [currentUserUid, setCurrentUserUid] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -15,6 +18,7 @@ export default function AppPage() {
             if (!user) {
                 navigate('/');
             } else {
+                setCurrentUserUid(user.uid);
                 try {
                     // Fetch user specific data (allowed apps)
                     const userSnap = await getDoc(doc(db, "users", user.uid));
@@ -68,6 +72,26 @@ export default function AppPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
+                    {/* Admin Card - Only visible to Admin */}
+                    {currentUserUid === ADMIN_UID && (
+                        <Link to="/admin" className="bento-card p-8 group hover:scale-[1.02] hover:border-yellow-500/30 cursor-pointer block no-underline relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <span className="text-9xl">🛡️</span>
+                            </div>
+
+                            <div className="relative z-10 flex flex-col h-full justify-between min-h-[180px]">
+                                <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-2xl group-hover:bg-yellow-500 group-hover:text-black transition-colors border border-yellow-500/20">
+                                    🛡️
+                                </div>
+
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-1 group-hover:text-yellow-400 transition-colors">Admin Panel</h2>
+                                    <p className="text-sm text-textMuted">Gestione utenti e richieste.</p>
+                                </div>
+                            </div>
+                        </Link>
+                    )}
+
                     {AVAILABLE_APPS.filter(app => allowedApps.includes(app.id)).map(app => {
                         const isLoveTracker = app.id === 'lovetracker';
                         const hoverBorderColor = isLoveTracker ? 'hover:border-rose-500/30' : 'hover:border-indigo-500/30';
@@ -95,7 +119,7 @@ export default function AppPage() {
                         );
                     })}
 
-                    {AVAILABLE_APPS.filter(app => allowedApps.includes(app.id)).length === 0 && (
+                    {AVAILABLE_APPS.filter(app => allowedApps.includes(app.id)).length === 0 && currentUserUid !== ADMIN_UID && (
                         <div className="col-span-full text-center text-textMuted py-10">
                             Non hai accesso a nessuna applicazione. Contatta l'amministratore.
                         </div>

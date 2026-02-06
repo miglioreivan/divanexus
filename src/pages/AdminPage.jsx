@@ -7,6 +7,7 @@ import { auth, db, app as firebaseApp } from '../firebase';
 import { AVAILABLE_APPS } from '../constants';
 
 const ADMIN_UID = "vdeS2SIosTWqeauP0PaZIllEG1f2";
+export { ADMIN_UID };
 
 export default function AdminPage() {
     const [loading, setLoading] = useState(true);
