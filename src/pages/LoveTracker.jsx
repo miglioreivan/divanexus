@@ -219,9 +219,15 @@ export default function LoveTracker() {
                 className={`day-cell relative flex flex-col justify-between p-2 cursor-pointer ${active ? 'bg-white/10 border border-accent/30' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}
             >
                 <span className={`text-[10px] font-bold ${active ? 'text-white' : 'text-textMuted'}`}>{day}</span>
-                {active && (
+                {active && entries.length === 1 && (
                     <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-2xl text-accent">♥</span>
+                    </div>
+                )}
+                {active && entries.length > 1 && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-2xl text-accent absolute -translate-x-1.5 -translate-y-1">♥</span>
+                        <span className="text-2xl text-accent/70 absolute translate-x-1.5 translate-y-1 z-10">♥</span>
                     </div>
                 )}
             </div>
