@@ -285,20 +285,30 @@ export default function University() {
     const getStats = (data = uniData) => {
         const exams = data?.exams || [];
         const totalCfu = exams.reduce((a, b) => a + b.cfu, 0);
+
+        // Filter out "Inglese" exams for averages
+        const statsExams = exams.filter(e => {
+            const s = data.subjects?.find(sub => sub.id === e.subjectId);
+            return !s?.name?.toLowerCase().includes('inglese');
+        });
+
         let w = 0, a = 0;
-        if (totalCfu > 0 && exams.length > 0) {
-            exams.forEach(e => {
+        const statsCfu = statsExams.reduce((acc, curr) => acc + curr.cfu, 0);
+
+        if (statsCfu > 0 && statsExams.length > 0) {
+            statsExams.forEach(e => {
                 w += e.grade * e.cfu;
                 a += e.grade;
             });
-            w = (w / totalCfu).toFixed(2);
-            a = (a / exams.length).toFixed(2);
+            w = (w / statsCfu).toFixed(2);
+            a = (a / statsExams.length).toFixed(2);
         } else {
             w = "0.00"; a = "0.00";
         }
         const percent = Math.min((totalCfu / 180) * 100, 100);
         return { totalCfu, weightedAvg: w, arithmeticAvg: a, percent };
     };
+
 
     // Calculate sorted unique times for the grid view
     const sortedTimes = [...new Set(uniData.schedule?.map(s => s.time) || [])].sort((a, b) => {
@@ -480,7 +490,7 @@ export default function University() {
                             <select value={deadSubjectSelect} onChange={e => setDeadSubjectSelect(e.target.value)} className="input-field bg-black/20">
                                 <option value="custom">📝 Altro / Personale</option>
                                 <option disabled>──────────</option>
-                                {uniData.subjects?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                {uniData.subjects?.filter(s => !uniData.exams?.some(e => e.subjectId === s.id)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                             {deadSubjectSelect === 'custom' && (
                                 <input type="text" value={deadTitleCustom} onChange={e => setDeadTitleCustom(e.target.value)} placeholder="Es. Tasse, Iscrizione..." className="input-field bg-black/20" />
@@ -597,7 +607,7 @@ export default function University() {
                                             <label className="input-label">Materia</label>
                                             <select value={examSubjectId} onChange={e => autoFillExamCfu(e.target.value)} required className="input-field">
                                                 <option value="">-- Seleziona --</option>
-                                                {uniData.subjects?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                {uniData.subjects?.filter(s => !uniData.exams?.some(e => e.subjectId === s.id)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                             </select>
                                             <p className="text-[10px] text-textMuted mt-1">Non trovi la materia? <button type="button" onClick={() => { setShowExamForm(false); setIsSubjectModalOpen(true); }} className="text-accent hover:underline">Aggiungila al catalogo</button></p>
                                         </div>
@@ -702,7 +712,7 @@ export default function University() {
                                 <label className="input-label">Seleziona Materia</label>
                                 <select value={classSubjectId} onChange={e => setClassSubjectId(e.target.value)} required className="input-field">
                                     <option value="">-- Scegli Materia --</option>
-                                    {uniData.subjects?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    {uniData.subjects?.filter(s => !uniData.exams?.some(e => e.subjectId === s.id)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
