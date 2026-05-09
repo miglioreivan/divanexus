@@ -168,7 +168,7 @@ export default function AdminPage() {
 
             <div className="w-full max-w-6xl space-y-8 pt-10">
 
-                <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-4 text-center md:text-left">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3"><span className="text-2xl">🛡️</span> Pannello Admin</h1>
                         <p className="text-sm text-textMuted mt-1">Gestione centralizzata utenti Nexus</p>

@@ -11,6 +11,8 @@ export default function AppPage() {
     const [loading, setLoading] = useState(true);
     const [allowedApps, setAllowedApps] = useState([]);
     const [currentUserUid, setCurrentUserUid] = useState(null);
+    const [userName, setUserName] = useState('');
+    const [userDob, setUserDob] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -24,8 +26,9 @@ export default function AppPage() {
                     const userSnap = await getDoc(doc(db, "users", user.uid));
                     if (userSnap.exists()) {
                         const userData = userSnap.data();
-                        // If allowedApps is undefined, default to ALL apps (allow everything for legacy/default)
                         setAllowedApps(userData.allowedApps || AVAILABLE_APPS.map(a => a.id));
+                        if (userData.name) setUserName(userData.name);
+                        if (userData.dateOfBirth) setUserDob(userData.dateOfBirth);
                     } else {
                         // Fallback if no user doc (shouldn't happen usually)
                         setAllowedApps(AVAILABLE_APPS.map(a => a.id));
@@ -118,6 +121,28 @@ export default function AppPage() {
                             </Link>
                         );
                     })}
+
+                    {/* Life Progress Widget */}
+                    {userDob && (
+                        <div className="bento-card p-6 relative overflow-hidden bg-gradient-to-br from-[#202020] to-[#000000] border border-white/10 flex flex-col justify-between min-h-[180px]">
+                            <div className="flex items-start justify-between z-10 relative">
+                                <div className="relative w-[70px] h-[70px]">
+                                    <svg className="w-full h-full transform -rotate-90">
+                                        <circle cx="35" cy="35" r="30" stroke="#222" strokeWidth="6" fill="none" />
+                                        <circle cx="35" cy="35" r="30" stroke="#FFD723" strokeWidth="6" fill="none" strokeDasharray={2 * Math.PI * 30} strokeDashoffset={2 * Math.PI * 30 - ((1 - (Math.ceil((new Date(new Date().getFullYear() + (new Date() > new Date(new Date().getFullYear(), new Date(userDob).getMonth(), new Date(userDob).getDate()) ? 1 : 0), new Date(userDob).getMonth(), new Date(userDob).getDate()) - new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) / (1000 * 60 * 60 * 24))) / ((new Date().getFullYear() + (new Date() > new Date(new Date().getFullYear(), new Date(userDob).getMonth(), new Date(userDob).getDate()) ? 1 : 0)) % 4 === 0 ? 366 : 365)) * 2 * Math.PI * 30} strokeLinecap="round" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div className="z-10 relative mt-4">
+                                <h3 className="text-[#ccff00] font-bold text-lg leading-tight">{userName ? userName.charAt(0).toUpperCase() + userName.slice(1) : 'Utente'}'s Life</h3>
+                                <p className="text-gray-400 text-xs font-bold">{new Date(userDob).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {Math.floor((new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) - new Date(new Date(userDob).getFullYear(), new Date(userDob).getMonth(), new Date(userDob).getDate())) / (1000 * 60 * 60 * 24))} days</p>
+                            </div>
+                            <div className="absolute right-6 bottom-6 z-10 flex items-baseline gap-1">
+                                <span className="text-4xl font-bold text-[#b8bdfb]">{( (Math.floor((new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) - new Date(new Date(userDob).getFullYear(), new Date(userDob).getMonth(), new Date(userDob).getDate())) / (1000 * 60 * 60 * 24)) + 1) / 365.25 ).toFixed(2)}</span>
+                                <span className="text-xs font-bold text-gray-500 leading-tight">years<br/>old</span>
+                            </div>
+                        </div>
+                    )}
 
                     {AVAILABLE_APPS.filter(app => allowedApps.includes(app.id)).length === 0 && currentUserUid !== ADMIN_UID && (
                         <div className="col-span-full text-center text-textMuted py-10">

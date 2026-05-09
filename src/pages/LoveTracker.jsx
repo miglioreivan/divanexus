@@ -285,12 +285,6 @@ export default function LoveTracker() {
                             </div>
                         </div>
                     </div>
-                    <div className="mt-6 border-t border-white/5 pt-6">
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={exportData} className="btn-secondary py-3 text-xs">Export</button>
-                            <button onClick={() => fileInputRef.current.click()} className="btn-secondary py-3 text-xs">Import</button>
-                            <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={importData} />
-                        </div>
                     </div>
                 </div>
 
@@ -308,6 +302,20 @@ export default function LoveTracker() {
                         {calendarCells}
                     </div>
                 </div>
+
+                {/* BACKUP SECTION - AT THE BOTTOM */}
+                <div className="col-span-1 md:col-span-3 mt-8 mb-8 flex justify-center w-full">
+                    <div className="bento-card p-6 w-full max-w-md bg-cardDark border border-white/5 rounded-[24px] text-center">
+                        <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Gestione Dati Locali</h3>
+                        <p className="text-xs text-textMuted mb-6">Esporta un backup dei tuoi dati o importane uno esistente. Attenzione: l'importazione sovrascriverà i dati correnti sul cloud.</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={exportData} className="btn-secondary py-3 text-xs flex items-center justify-center gap-2">📤 Esporta JSON</button>
+                            <button onClick={() => fileInputRef.current.click()} className="btn-secondary py-3 text-xs flex items-center justify-center gap-2">📥 Importa JSON</button>
+                            <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={importData} />
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             {/* Modal */}

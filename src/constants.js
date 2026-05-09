@@ -14,5 +14,13 @@ export const AVAILABLE_APPS = [
         icon: '🎓',
         description: 'Orario lezioni, libretto voti e scadenze.',
         color: 'indigo'
+    },
+    {
+        id: 'profile',
+        name: 'Profilo',
+        path: '/profile',
+        icon: '👤',
+        description: 'Gestisci le tue informazioni personali e di accesso.',
+        color: 'teal'
     }
 ];

@@ -354,9 +354,9 @@ export default function University() {
                                         <div className="bg-accent h-full rounded-full" style={{ width: `${stats.percent}%` }}></div>
                                     </div>
                                 </div>
-                                <div className="bg-black/20 p-3 rounded-xl border border-white/5 flex justify-between">
-                                    <span className="text-xs font-bold text-textMuted uppercase">CFU</span>
-                                    <span className="font-bold text-white">{stats.totalCfu}</span>
+                                <div className="bg-black/20 p-4 rounded-xl border border-white/5 flex justify-between items-center">
+                                    <div><p className="text-[10px] text-textMuted uppercase font-bold">CFU Acquisiti</p><p className="text-2xl font-bold text-white">{stats.totalCfu}</p></div>
+                                    <div className="text-right"><p className="text-[10px] text-textMuted uppercase font-bold">Obiettivo</p><p className="text-sm font-bold text-textMuted">/ 180</p></div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="bg-black/20 p-3 rounded-xl border border-white/5">
@@ -441,6 +441,30 @@ export default function University() {
                             </a>
                         </div>
 
+                        <div className="mb-6 p-4 rounded-xl border border-white/10 bg-white/5">
+                            <h3 className="text-[10px] text-textMuted uppercase font-bold mb-3">Condivisione Carriera</h3>
+                            {isPublic ? (
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                        <span className="text-xs font-bold text-white">Carriera Pubblica</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={copyShareLink} className="w-full btn-secondary text-xs">🔗 Copia Link</button>
+                                        <button onClick={toggleShare} className="w-full btn-secondary text-yellow-400 hover:text-yellow-300 border-yellow-500/20 hover:bg-yellow-500/10 text-xs">🔒 Rendi Privato</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                                        <span className="text-xs font-bold text-white">Carriera Privata</span>
+                                    </div>
+                                    <button onClick={toggleShare} className="w-full btn-primary bg-accent hover:bg-accentHover text-white border-transparent text-xs gap-2">🌐 Rendi Pubblica</button>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="space-y-4">
                             <div>
                                 <div className="flex justify-between items-end mb-2">
@@ -462,24 +486,6 @@ export default function University() {
                                 <div className="bg-black/20 p-3 rounded-xl border border-white/5"><p className="text-[10px] text-textMuted uppercase font-bold">Media Aritm.</p><p className="text-lg font-bold text-white">{stats.arithmeticAvg}</p></div>
                             </div>
 
-                            <div className="pt-4 border-t border-white/5">
-                                <h3 className="text-[10px] text-textMuted uppercase font-bold mb-2">Backup Dati</h3>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button onClick={exportData} className="bg-white/5 hover:bg-white/10 text-white py-2 rounded-lg text-xs font-bold border border-white/10 transition-all flex items-center justify-center gap-1">📤 Export</button>
-                                    <button onClick={() => fileInputRef.current.click()} className="bg-white/5 hover:bg-white/10 text-white py-2 rounded-lg text-xs font-bold border border-white/10 transition-all flex items-center justify-center gap-1">📥 Import</button>
-                                    <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={importData} />
-                                </div>
-                            </div>
-
-                            <div className="pt-2 border-t border-white/5">
-                                {isPublic ? (
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={copyShareLink} className="w-full btn-secondary text-xs">🔗 Copia Link</button>
-                                        <button onClick={toggleShare} className="w-full btn-secondary text-yellow-400 hover:text-yellow-300 border-yellow-500/20 hover:bg-yellow-500/10 text-xs">🔒 Privato</button>
-                                    </div>
-                                ) : (
-                                    <button onClick={toggleShare} className="w-full btn-secondary text-accent hover:text-green-300 border-white/10 text-xs gap-2">🔗 Condividi Carriera</button>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -671,6 +677,20 @@ export default function University() {
                         </div>
                     </div>
                 </div>
+
+                {/* BACKUP SECTION - AT THE BOTTOM */}
+                <div className="col-span-1 lg:col-span-4 mt-8 mb-8 flex justify-center w-full">
+                    <div className="bento-card p-6 w-full max-w-md bg-cardDark border border-white/5 rounded-[24px] text-center">
+                        <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Gestione Dati Locali</h3>
+                        <p className="text-xs text-textMuted mb-6">Esporta un backup dei tuoi dati o importane uno esistente. Attenzione: l'importazione sovrascriverà i dati correnti sul cloud.</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={exportData} className="btn-secondary py-3 text-xs flex items-center justify-center gap-2">📤 Esporta JSON</button>
+                            <button onClick={() => fileInputRef.current.click()} className="btn-secondary py-3 text-xs flex items-center justify-center gap-2">📥 Importa JSON</button>
+                            <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={importData} />
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             {/* SUBJECT MODAL */}

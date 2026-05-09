@@ -5,6 +5,7 @@ import AppPage from './pages/AppPage';
 import LoveTracker from './pages/LoveTracker';
 import University from './pages/University';
 import AdminPage from './pages/AdminPage';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/love-tracker" element={<LoveTracker />} />
         <Route path="/university" element={<University />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
