@@ -285,7 +285,6 @@ export default function LoveTracker() {
                             </div>
                         </div>
                     </div>
-                    </div>
                 </div>
 
                 {/* Calendar */}
