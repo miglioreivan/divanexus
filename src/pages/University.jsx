@@ -485,10 +485,8 @@ export default function University() {
                                 <div className="bg-black/20 p-3 rounded-xl border border-white/5"><p className="text-[10px] text-textMuted uppercase font-bold">Media Pond.</p><p className="text-lg font-bold text-accent">{stats.weightedAvg}</p></div>
                                 <div className="bg-black/20 p-3 rounded-xl border border-white/5"><p className="text-[10px] text-textMuted uppercase font-bold">Media Aritm.</p><p className="text-lg font-bold text-white">{stats.arithmeticAvg}</p></div>
                             </div>
-
                             </div>
                         </div>
-                    </div>
 
                     <div className="bento-card p-6 flex-grow bg-cardDark border border-white/5 rounded-[24px]">
                         <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">🔔 Scadenze</h3>
