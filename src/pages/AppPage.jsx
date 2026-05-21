@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signOut, onAuthStateChanged } from '../auth';
 import { auth } from '../auth'; 
-import { getUserProfile } from '../database';
+import { getUserProfile, setUserProfile } from '../database';
 import { AVAILABLE_APPS } from '../constants';
 
 import { ADMIN_UID } from './AdminPage';
@@ -30,7 +30,16 @@ export default function AppPage() {
                         if (userData.dateOfBirth) setUserDob(userData.dateOfBirth);
                     } else {
                         // Fallback if no user doc (shouldn't happen usually)
-                        setAllowedApps(AVAILABLE_APPS.map(a => a.id));
+                        const defaultAllowedApps = AVAILABLE_APPS.map(a => a.id);
+                        setAllowedApps(defaultAllowedApps);
+                        // Auto-create missing profile in database so they are visible to Admin
+                        const isMe = user.uid === ADMIN_UID;
+                        await setUserProfile(user.uid, {
+                            email: user.email || 'N/A',
+                            role: isMe ? 'admin' : 'user',
+                            allowedApps: defaultAllowedApps,
+                            createdAt: new Date().toISOString()
+                        });
                     }
                 } catch (error) {
                     console.error("Error fetching user data:", error);

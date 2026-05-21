@@ -78,6 +78,14 @@ export default function AdminPage() {
             const userCred = await createUserWithEmailAndPassword(null, newEmail, newPassword);
             const newUser = userCred.user;
 
+            // Inizializza il profilo utente nel database per renderlo visibile
+            await setUserProfile(newUser.uid, {
+                email: newEmail.trim().toLowerCase(),
+                role: 'user',
+                allowedApps: AVAILABLE_APPS.map(a => a.id),
+                createdAt: new Date().toISOString()
+            });
+
             setStatusMsg({ text: '✅ Utente creato!', type: 'text-green-500' });
             setNewEmail(''); setNewPassword('');
             loadUsers();
@@ -95,6 +103,14 @@ export default function AdminPage() {
         try {
             const userCred = await createUserWithEmailAndPassword(null, req.email, password);
             const newUser = userCred.user;
+
+            // Inizializza il profilo utente nel database per renderlo visibile
+            await setUserProfile(newUser.uid, {
+                email: req.email.trim().toLowerCase(),
+                role: 'user',
+                allowedApps: AVAILABLE_APPS.map(a => a.id),
+                createdAt: new Date().toISOString()
+            });
 
             await deleteRegistrationRequest(req.id);
 
