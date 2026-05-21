@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase';
+import { signOut, onAuthStateChanged } from '../auth';
+import { auth } from '../auth';
 import { getLoveTrackerData, setLoveTrackerData } from '../database';
 import './LoveTracker.css';
 

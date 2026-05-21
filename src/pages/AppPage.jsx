@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase'; // Ensure db is exported from firebase.js
+import { signOut, onAuthStateChanged } from '../auth';
+import { auth } from '../auth'; 
 import { getUserProfile } from '../database';
 import { AVAILABLE_APPS } from '../constants';
 

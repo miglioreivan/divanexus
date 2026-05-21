@@ -11,20 +11,9 @@ import {
 
 // Centralized helper to perform fetch requests to the Vercel Serverless API Proxy
 async function callApi(action, args = {}) {
-    const user = auth.currentUser;
     const headers = {
         'Content-Type': 'application/json'
     };
-
-    if (user) {
-        try {
-            // Exchanging current auth state with secure Firebase JWT
-            const token = await user.getIdToken();
-            headers['Authorization'] = `Bearer ${token}`;
-        } catch (e) {
-            console.warn("⚠️ Impossibile ottenere il token di Firebase Auth:", e);
-        }
-    }
 
     try {
         const response = await fetch('/api/db', {

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail, getAuth } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
-import { auth, app as firebaseApp } from '../firebase';
+import { signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail, getAuth } from '../auth';
+import { auth } from '../auth';
 import { AVAILABLE_APPS } from '../constants';
 import { 
     getAllUsers, 
@@ -76,25 +75,14 @@ export default function AdminPage() {
         setStatusMsg({ text: 'Creazione...', type: 'text-textMuted' });
 
         try {
-            // Secondary App Trick to create user without logging out Admin
-            const secondaryApp = initializeApp(firebaseApp.options, "SecondaryAppManual" + Date.now()); // Unique name to avoid conflicts
-            const secondaryAuth = getAuth(secondaryApp);
-            const userCred = await createUserWithEmailAndPassword(secondaryAuth, newEmail, newPassword);
+            const userCred = await createUserWithEmailAndPassword(null, newEmail, newPassword);
             const newUser = userCred.user;
-
-            await setUserProfile(newUser.uid, { email: newEmail, role: 'user', createdAt: new Date().toISOString() });
-
-            // Cleanup: secondaryApp doesn't have a direct delete() method exposed easily in modular v9+, 
-            // but we just let it be garbage collected or use it once. 
-            // Actually, signOut is enough for auth state, but the app instance remains. 
-            // It's fine for this admin panel usage.
-            await signOut(secondaryAuth);
 
             setStatusMsg({ text: '✅ Utente creato!', type: 'text-green-500' });
             setNewEmail(''); setNewPassword('');
             loadUsers();
         } catch (error) {
-            setStatusMsg({ text: '❌ Errore: ' + error.code, type: 'text-red-500' });
+            setStatusMsg({ text: '❌ Errore: ' + (error.message || error.code), type: 'text-red-500' });
         } finally {
             setIsSubmitting(false);
         }
@@ -105,14 +93,10 @@ export default function AdminPage() {
         if (!password) return;
 
         try {
-            const secondaryApp = initializeApp(firebaseApp.options, "SecondaryAppRequest" + Date.now());
-            const secondaryAuth = getAuth(secondaryApp);
-            const userCred = await createUserWithEmailAndPassword(secondaryAuth, req.email, password);
+            const userCred = await createUserWithEmailAndPassword(null, req.email, password);
             const newUser = userCred.user;
 
-            await setUserProfile(newUser.uid, { email: req.email, role: 'user', createdAt: new Date().toISOString() });
             await deleteRegistrationRequest(req.id);
-            await signOut(secondaryAuth);
 
             alert(`✅ Utente creato!\n\nEmail: ${req.email}\nPassword: ${password}\nUID: ${newUser.uid}`);
             loadData();

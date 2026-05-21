@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged, updateEmail, updatePassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import { signOut, onAuthStateChanged, updateEmail, updatePassword } from '../auth';
+import { auth } from '../auth';
 import { getUserProfile, setUserProfile } from '../database';
 
 export default function ProfilePage() {

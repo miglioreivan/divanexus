@@ -8,32 +8,22 @@ const redis = (redisUrl && redisToken && redisUrl !== 'YOUR_UPSTASH_REDIS_REST_U
     ? new Redis({ url: redisUrl, token: redisToken })
     : null;
 
-const FIREBASE_API_KEY = "AIzaSyAQL_esONHBs76UnutB4GmfOmKUUTNWRdk"; // From src/firebase.js
 const ADMIN_UID = "vdeS2SIosTWqeauP0PaZIllEG1f2";
 
-// Secure token verification via official Google Auth API (Zero-dependency JWT validation)
-async function verifyFirebaseToken(token) {
-    if (!token) throw new Error("Token non fornito.");
-    
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: token })
+// Cookie parser helper
+function parseCookies(req) {
+    const list = {};
+    const cookieHeader = req.headers.cookie;
+    if (!cookieHeader) return list;
+
+    cookieHeader.split(';').forEach(cookie => {
+        let [name, ...rest] = cookie.split('=');
+        name = name.trim();
+        if (!name) return;
+        const value = rest.join('=').trim();
+        list[name] = decodeURIComponent(value);
     });
-    
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || "Token non valido o scaduto.");
-    }
-    
-    const data = await response.json();
-    const user = data.users?.[0];
-    if (!user) throw new Error("Utente non trovato.");
-    
-    return {
-        uid: user.localId,
-        email: user.email
-    };
+    return list;
 }
 
 function isOwner(uid, verifiedUid) {
@@ -69,21 +59,23 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Azione non specificata." });
     }
 
-    // Extract Bearer Token from Authorization Header
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    // Extract session token from cookie
+    const cookies = parseCookies(req);
+    const sessionToken = cookies.session_token;
 
     let verifiedUser = null;
     let verifiedUid = null;
 
     try {
-        if (token) {
-            verifiedUser = await verifyFirebaseToken(token);
-            verifiedUid = verifiedUser.uid;
+        if (sessionToken) {
+            const sessionData = await redis.get(`session:${sessionToken}`);
+            if (sessionData) {
+                verifiedUser = sessionData;
+                verifiedUid = sessionData.uid;
+            }
         }
     } catch (e) {
-        console.warn("🔍 Token non verificato o non valido:", e.message);
-        // Non lanciamo un errore subito perché alcune azioni sono pubbliche (es. addRegistrationRequest)
+        console.warn("🔍 Sessione non verificata o scaduta:", e.message);
     }
 
     try {

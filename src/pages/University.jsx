@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase';
+import { signOut, onAuthStateChanged } from '../auth';
+import { auth } from '../auth';
 import { getUniversityData, setUniversityData } from '../database';
 import { publishMessage } from '../upstash';
 import './University.css';
