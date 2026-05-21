@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
+import { getUniversityData, setUniversityData } from '../database';
+import { publishMessage } from '../upstash';
 import './University.css';
 
 export default function University() {
@@ -61,26 +62,24 @@ export default function University() {
             setIsGuestView(true);
             loadSharedCareer(sharedUid);
         } else {
-            const unsubscribe = onAuthStateChanged(auth, (user) => {
+            const unsubscribe = onAuthStateChanged(auth, async (user) => {
                 if (!user) {
                     navigate('/');
                 } else {
                     setCurrentUser(user);
-                    const docRef = doc(db, "users", user.uid, "university", "main");
-                    const sub = onSnapshot(docRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            const d = docSnap.data();
-                            setIsPublic(d.isUniPublic || false);
-                            setUniData(d.uniData || { exams: [], deadlines: [], schedule: [], subjects: [] });
+                    try {
+                        const data = await getUniversityData(user.uid);
+                        if (data) {
+                            setIsPublic(data.isUniPublic || false);
+                            setUniData(data.uniData || { exams: [], deadlines: [], schedule: [], subjects: [] });
                         } else {
                             setUniData({ exams: [], deadlines: [], schedule: [], subjects: [] });
                         }
-                        setLoading(false);
-                    }, (error) => {
+                    } catch (error) {
                         console.error("University Load Error:", error);
+                    } finally {
                         setLoading(false);
-                    });
-                    return () => sub();
+                    }
                 }
             });
             return () => unsubscribe();
@@ -89,33 +88,30 @@ export default function University() {
 
     const loadSharedCareer = async (uid) => {
         try {
-            const docRef = doc(db, "users", uid, "university", "main");
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (data.isUniPublic) {
-                    setGuestData(data.uniData || { exams: [], subjects: [] });
-                } else {
-                    alert("Questa carriera è privata.");
-                    navigate('/');
-                }
+            const data = await getUniversityData(uid);
+            if (data) {
+                setGuestData(data.uniData || { exams: [], subjects: [] });
             } else {
-                alert("Utente non trovato.");
+                alert("Questa carriera è privata o non esiste.");
                 navigate('/');
             }
-            setLoading(false);
         } catch (e) {
             console.error(e);
             alert("Errore caricamento.");
             navigate('/');
+        } finally {
+            setLoading(false);
         }
     };
 
     const saveToCloud = async (newData, publicStatus = isPublic) => {
         if (!currentUser || isGuestView) return;
         try {
-            await setDoc(doc(db, "users", currentUser.uid, "university", "main"), { uniData: newData, isUniPublic: publicStatus }, { merge: true });
-        } catch (e) { console.error("Err save:", e); }
+            await setUniversityData(currentUser.uid, newData, publicStatus);
+            await publishMessage('university_update', newData);
+        } catch (e) {
+            console.error("Err save:", e);
+        }
     };
 
     // --- LOGIC ---

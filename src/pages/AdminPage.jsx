@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail, getAuth } from 'firebase/auth';
-import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
-import { auth, db, app as firebaseApp } from '../firebase';
+import { auth, app as firebaseApp } from '../firebase';
 import { AVAILABLE_APPS } from '../constants';
+import { 
+    getAllUsers, 
+    setUserProfile, 
+    deleteUserProfile, 
+    getRegistrationRequests, 
+    deleteRegistrationRequest 
+} from '../database';
 
 const ADMIN_UID = "vdeS2SIosTWqeauP0PaZIllEG1f2";
 export { ADMIN_UID };
@@ -42,23 +48,24 @@ export default function AdminPage() {
         return () => unsubscribe();
     }, [navigate]);
 
-    const loadData = () => {
+    const loadData = async () => {
         loadUsers();
-        const unsubRequests = onSnapshot(collection(db, "registration_requests"), (snap) => {
-            const reqs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        try {
+            const reqs = await getRegistrationRequests();
             setRequests(reqs);
             setPendingCount(reqs.length);
-        }, (error) => {
+        } catch (error) {
             console.error("Requests Load Error:", error);
-        });
-        return unsubRequests; // Cleanup handled by component unmount roughly, or strict useEffect return logic if we persist unsub
+        }
     };
 
     const loadUsers = async () => {
         try {
-            const snap = await getDocs(collection(db, "users"));
-            setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
-        } catch (e) { console.error(e); }
+            const data = await getAllUsers();
+            setUsers(data);
+        } catch (e) { 
+            console.error(e); 
+        }
     };
 
     // --- ACTIONS ---
@@ -75,7 +82,7 @@ export default function AdminPage() {
             const userCred = await createUserWithEmailAndPassword(secondaryAuth, newEmail, newPassword);
             const newUser = userCred.user;
 
-            await setDoc(doc(db, "users", newUser.uid), { email: newEmail, role: 'user', createdAt: new Date() });
+            await setUserProfile(newUser.uid, { email: newEmail, role: 'user', createdAt: new Date().toISOString() });
 
             // Cleanup: secondaryApp doesn't have a direct delete() method exposed easily in modular v9+, 
             // but we just let it be garbage collected or use it once. 
@@ -103,12 +110,12 @@ export default function AdminPage() {
             const userCred = await createUserWithEmailAndPassword(secondaryAuth, req.email, password);
             const newUser = userCred.user;
 
-            await setDoc(doc(db, "users", newUser.uid), { email: req.email, role: 'user', createdAt: new Date() });
-            await deleteDoc(doc(db, "registration_requests", req.id));
+            await setUserProfile(newUser.uid, { email: req.email, role: 'user', createdAt: new Date().toISOString() });
+            await deleteRegistrationRequest(req.id);
             await signOut(secondaryAuth);
 
             alert(`✅ Utente creato!\n\nEmail: ${req.email}\nPassword: ${password}\nUID: ${newUser.uid}`);
-            loadUsers();
+            loadData();
         } catch (e) {
             alert("Errore: " + e.message);
         }
@@ -117,14 +124,15 @@ export default function AdminPage() {
     const rejectRequest = async (id) => {
         if (!confirm("Rifiutare e cancellare questa richiesta?")) return;
         try {
-            await deleteDoc(doc(db, "registration_requests", id));
+            await deleteRegistrationRequest(id);
+            loadData();
         } catch (e) { alert("Errore: " + e.message); }
     };
 
     const deleteUser = async (uid) => {
         if (confirm("Eliminare i dati di questo utente? (Attenzione: l'account Auth rimarrà attivo, solo i dati DB saranno cancellati)")) {
             try {
-                await deleteDoc(doc(db, "users", uid));
+                await deleteUserProfile(uid);
                 alert("Dati eliminati.");
                 loadUsers();
             } catch (e) { alert("Errore: " + e.message); }
@@ -147,10 +155,10 @@ export default function AdminPage() {
 
     const saveEditUser = async () => {
         try {
-            await updateDoc(doc(db, "users", editUid), {
+            await setUserProfile(editUid, {
                 email: editEmail,
                 allowedApps: editAllowedApps
-            });
+            }, { merge: true });
             setIsEditModalOpen(false);
             loadUsers();
         } catch (e) { alert("Errore: " + e.message); }

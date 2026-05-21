@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
+import { getLoveTrackerData, setLoveTrackerData } from '../database';
 import './LoveTracker.css';
 
 const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
@@ -27,24 +27,19 @@ export default function LoveTracker() {
     const fileInputRef = useRef(null);
 
     useEffect(() => {
-        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
             if (!user) {
                 navigate('/');
             } else {
                 setCurrentUser(user);
-                const docRef = doc(db, "users", user.uid, "loveTracker", "main");
-                const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        setDataStore(docSnap.data().data || {});
-                    } else {
-                        setDataStore({});
-                    }
-                    setLoading(false);
-                }, (error) => {
+                try {
+                    const data = await getLoveTrackerData(user.uid);
+                    setDataStore(data || {});
+                } catch (error) {
                     console.error("LoveTracker Load Error:", error);
+                } finally {
                     setLoading(false);
-                });
-                return () => unsubscribeSnapshot();
+                }
             }
         });
         return () => unsubscribeAuth();
@@ -52,9 +47,7 @@ export default function LoveTracker() {
 
     const saveToCloud = async (newData) => {
         if (!currentUser) return;
-        // Removing merge: true to ensure deleted keys in the 'data' object are removed from Firestore
-        // validation: setDoc without merge replaces the document, which is what we want for the 'data' map
-        await setDoc(doc(db, "users", currentUser.uid, "loveTracker", "main"), { data: newData, lastUpdate: new Date() });
+        await setLoveTrackerData(currentUser.uid, newData);
     };
 
     const handleSaveEntry = async (e) => {

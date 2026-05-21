@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
-import { collection, addDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
+import { addRegistrationRequest } from '../database';
 
 export default function Home() {
     const [loading, setLoading] = useState(true);
@@ -67,11 +67,9 @@ export default function Home() {
         setIsReqSubmitting(true);
 
         try {
-            await addDoc(collection(db, "registration_requests"), {
+            await addRegistrationRequest({
                 email: reqEmail,
-                reason: reqReason,
-                status: 'pending',
-                timestamp: new Date()
+                reason: reqReason
             });
 
             alert("Richiesta inviata! L'amministratore valuterà la tua richiesta.");

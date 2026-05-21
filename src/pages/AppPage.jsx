@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase'; // Ensure db is exported from firebase.js
+import { auth } from '../firebase'; // Ensure db is exported from firebase.js
+import { getUserProfile } from '../database';
 import { AVAILABLE_APPS } from '../constants';
 
 import { ADMIN_UID } from './AdminPage';
@@ -23,9 +23,8 @@ export default function AppPage() {
                 setCurrentUserUid(user.uid);
                 try {
                     // Fetch user specific data (allowed apps)
-                    const userSnap = await getDoc(doc(db, "users", user.uid));
-                    if (userSnap.exists()) {
-                        const userData = userSnap.data();
+                    const userData = await getUserProfile(user.uid);
+                    if (userData) {
                         setAllowedApps(userData.allowedApps || AVAILABLE_APPS.map(a => a.id));
                         if (userData.name) setUserName(userData.name);
                         if (userData.dateOfBirth) setUserDob(userData.dateOfBirth);

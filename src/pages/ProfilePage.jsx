@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signOut, onAuthStateChanged, updateEmail, updatePassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
+import { getUserProfile, setUserProfile } from '../database';
 
 export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
@@ -26,9 +26,8 @@ export default function ProfilePage() {
                 setCurrentUser(user);
                 setEmail(user.email);
                 try {
-                    const userSnap = await getDoc(doc(db, "users", user.uid));
-                    if (userSnap.exists()) {
-                        const data = userSnap.data();
+                    const data = await getUserProfile(user.uid);
+                    if (data) {
                         if (data.name) setName(data.name);
                         if (data.dateOfBirth) setDob(data.dateOfBirth);
                     }
@@ -57,12 +56,12 @@ export default function ProfilePage() {
                 await updatePassword(currentUser, password);
             }
 
-            // Update Firestore Profile Data
-            await setDoc(doc(db, "users", currentUser.uid), {
+            // Update Database Profile Data
+            await setUserProfile(currentUser.uid, {
                 name,
                 dateOfBirth: dob,
                 email: email // Keep email synced in doc if desired
-            }, { merge: true });
+            });
 
             setStatusMsg({ text: '✅ Profilo aggiornato con successo!', type: 'text-green-400' });
             setPassword(''); // Clear password field after save
