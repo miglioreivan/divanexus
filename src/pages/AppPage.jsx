@@ -1,60 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase'; // Ensure db is exported from firebase.js
-import { AVAILABLE_APPS } from '../constants';
-
-import { ADMIN_UID } from './AdminPage';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
+import { AVAILABLE_APPS, ADMIN_UID } from '../constants';
+import { useAuthGuard } from '../hooks/useAuthGuard';
+import { useUserData } from '../hooks/useUserData';
 
 export default function AppPage() {
-    const [loading, setLoading] = useState(true);
-    const [allowedApps, setAllowedApps] = useState([]);
-    const [currentUserUid, setCurrentUserUid] = useState(null);
-    const [userName, setUserName] = useState('');
-    const [userDob, setUserDob] = useState('');
     const navigate = useNavigate();
+    const { user, loading } = useAuthGuard();
+    const { userData, loading: userDataLoading } = useUserData(user);
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (!user) {
-                navigate('/');
-            } else {
-                setCurrentUserUid(user.uid);
-                try {
-                    // Fetch user specific data (allowed apps)
-                    const userSnap = await getDoc(doc(db, "users", user.uid));
-                    if (userSnap.exists()) {
-                        const userData = userSnap.data();
-                        setAllowedApps(userData.allowedApps || AVAILABLE_APPS.map(a => a.id));
-                        if (userData.name) setUserName(userData.name);
-                        if (userData.dateOfBirth) setUserDob(userData.dateOfBirth);
-                    } else {
-                        // Fallback if no user doc (shouldn't happen usually)
-                        setAllowedApps(AVAILABLE_APPS.map(a => a.id));
-                    }
-                } catch (error) {
-                    console.error("Error fetching user data:", error);
-                    // On error, safely default to showing nothing or everything? 
-                    // Let's show everything to avoid locking out on network glitches, or handle gracefully.
-                    // For now, default to all.
-                    setAllowedApps(AVAILABLE_APPS.map(a => a.id));
-                } finally {
-                    setLoading(false);
-                }
-            }
-        });
-        return () => unsubscribe();
-    }, [navigate]);
+    const allowedApps = userData?.allowedApps || [];
+    const userName = userData?.name || '';
+    const userDob = userData?.dateOfBirth || '';
+
+    const isLoading = loading || userDataLoading;
 
     const handleLogout = () => {
         signOut(auth).then(() => navigate('/'));
     };
 
-    if (loading) return null;
+    if (isLoading) return null;
 
     return (
-        <div className={`min-h-screen p-4 md:p-8 flex flex-col items-center justify-center transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center transition-opacity duration-300 opacity-100">
 
             <div className="fixed top-6 right-6 z-50">
                 <button
@@ -146,7 +116,7 @@ export default function AppPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                     {/* Admin Card - Only visible to Admin */}
-                    {currentUserUid === ADMIN_UID && (
+                    {user?.uid === ADMIN_UID && (
                         <Link to="/admin" className="bento-card p-8 group hover:scale-[1.02] hover:border-yellow-500/30 cursor-pointer block no-underline relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <span className="text-9xl">🛡️</span>
@@ -194,7 +164,7 @@ export default function AppPage() {
 
 
 
-                    {AVAILABLE_APPS.filter(app => allowedApps.includes(app.id)).length === 0 && currentUserUid !== ADMIN_UID && (
+                    {AVAILABLE_APPS.filter(app => allowedApps.includes(app.id)).length === 0 && user?.uid !== ADMIN_UID && (
                         <div className="col-span-full text-center text-textMuted py-10">
                             Non hai accesso a nessuna applicazione. Contatta l'amministratore.
                         </div>

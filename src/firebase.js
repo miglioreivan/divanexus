@@ -4,13 +4,13 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAQL_esONHBs76UnutB4GmfOmKUUTNWRdk",
-    authDomain: "divanetto-space.firebaseapp.com",
-    projectId: "divanetto-space",
-    storageBucket: "divanetto-space.firebasestorage.app",
-    messagingSenderId: "929101364514",
-    appId: "1:929101364514:web:6f8d55616122b2ff2b797b",
-    measurementId: "G-1R1040FMY6"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);

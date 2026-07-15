@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useAuthGuard } from '../hooks/useAuthGuard';
 
 export default function Home() {
-    const [loading, setLoading] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -20,16 +20,11 @@ export default function Home() {
     const navigate = useNavigate();
     const cardRef = useRef(null);
 
+    const { user, loading } = useAuthGuard();
+
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                navigate('/app');
-            } else {
-                setLoading(false);
-            }
-        });
-        return () => unsubscribe();
-    }, [navigate]);
+        if (user) navigate('/app');
+    }, [user, navigate]);
 
     const handleLogin = async (e) => {
         e?.preventDefault(); // Handle both button click and form submit

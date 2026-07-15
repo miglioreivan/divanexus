@@ -1,19 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useAuthGuard } from '../hooks/useAuthGuard';
 import './LoveTracker.css';
 
 const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
 export default function LoveTracker() {
-    const [loading, setLoading] = useState(true);
+    const { user, loading: authLoading } = useAuthGuard();
+    const [dataLoading, setDataLoading] = useState(true);
     const [dataStore, setDataStore] = useState({});
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDateKey, setSelectedDateKey] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
 
     // Form State
     const [type, setType] = useState('sesso'); // 'sesso', 'preliminari_ricevuti', 'preliminari_praticati'
@@ -40,35 +41,37 @@ export default function LoveTracker() {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
 
-    useEffect(() => {
-        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                navigate('/');
-            } else {
-                setCurrentUser(user);
-                const docRef = doc(db, "users", user.uid, "loveTracker", "main");
-                const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        setDataStore(docSnap.data().data || {});
-                    } else {
-                        setDataStore({});
-                    }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("LoveTracker Load Error:", error);
-                    setLoading(false);
-                });
-                return () => unsubscribeSnapshot();
-            }
+    // Ensure all entries have a unique id (for backward compat with pre-id data)
+    const normalizeData = (rawData) => {
+        const normalized = {};
+        Object.entries(rawData).forEach(([dateKey, entries]) => {
+            normalized[dateKey] = entries.map(e => e.id ? e : { ...e, id: crypto.randomUUID() });
         });
-        return () => unsubscribeAuth();
-    }, [navigate]);
+        return normalized;
+    };
+
+    useEffect(() => {
+        if (!user) return;
+        const docRef = doc(db, "users", user.uid, "loveTracker", "main");
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setDataStore(normalizeData(docSnap.data().data || {}));
+            } else {
+                setDataStore({});
+            }
+            setDataLoading(false);
+        }, (error) => {
+            console.error("LoveTracker Load Error:", error);
+            setDataLoading(false);
+        });
+        return () => unsubscribe();
+    }, [user]);
+
+    const loading = authLoading || dataLoading;
 
     const saveToCloud = async (newData) => {
-        if (!currentUser) return;
-        // Removing merge: true to ensure deleted keys in the 'data' object are removed from Firestore
-        // validation: setDoc without merge replaces the document, which is what we want for the 'data' map
-        await setDoc(doc(db, "users", currentUser.uid, "loveTracker", "main"), { data: newData, lastUpdate: new Date() });
+        if (!user) return;
+        await setDoc(doc(db, "users", user.uid, "loveTracker", "main"), { data: newData, lastUpdate: new Date() }, { merge: true });
     };
 
     const handleSaveEntry = async (e) => {
@@ -78,23 +81,37 @@ export default function LoveTracker() {
             oral: type !== 'sesso' ? oralDone : false,
             other: type !== 'sesso' ? otherDone : false
         };
-        const obj = {
-            type,
-            location: location.trim(),
-            partner: partner.trim(),
-            protection,
-            orgasm,
-            toys,
-            time: time || '',
-            rating: rating !== null ? Number(rating) : null,
-            doneToPartner: type !== 'sesso' ? doneToPartner : null
-        };
         const newData = { ...dataStore };
         if (!newData[selectedDateKey]) newData[selectedDateKey] = [];
 
         if (editingIndex !== null) {
+            const existingEntry = newData[selectedDateKey][editingIndex];
+            const obj = {
+                id: existingEntry?.id || crypto.randomUUID(),
+                type,
+                location: location.trim(),
+                partner: partner.trim(),
+                protection,
+                orgasm,
+                toys,
+                time: time || '',
+                rating: rating !== null ? Number(rating) : null,
+                doneToPartner: type !== 'sesso' ? doneToPartner : null
+            };
             newData[selectedDateKey][editingIndex] = obj;
         } else {
+            const obj = {
+                id: crypto.randomUUID(),
+                type,
+                location: location.trim(),
+                partner: partner.trim(),
+                protection,
+                orgasm,
+                toys,
+                time: time || '',
+                rating: rating !== null ? Number(rating) : null,
+                doneToPartner: type !== 'sesso' ? doneToPartner : null
+            };
             newData[selectedDateKey].push(obj);
         }
 
@@ -239,7 +256,7 @@ export default function LoveTracker() {
         };
     };
 
-    const stats = getStats();
+    const stats = useMemo(() => getStats(), [dataStore]);
 
     const getRankings = () => {
         const list = [];
@@ -278,7 +295,7 @@ export default function LoveTracker() {
         };
     };
 
-    const rankings = getRankings();
+    const rankings = useMemo(() => getRankings(), [dataStore]);
 
     const getAllPartnersData = () => {
         const partnersMap = {};
@@ -315,7 +332,7 @@ export default function LoveTracker() {
         }).sort((a, b) => a.name.localeCompare(b.name));
     };
 
-    const partnersData = getAllPartnersData();
+    const partnersData = useMemo(() => getAllPartnersData(), [dataStore]);
 
     const changeMonth = (offset) => {
         const newDate = new Date(currentDate);
@@ -660,7 +677,7 @@ export default function LoveTracker() {
                                 const detailsText = details.length > 0 ? `(${details.join(', ')})` : '';
 
                                 return (
-                                    <div key={`${item.date}-${item.entryIndex}`} className="bg-bgApp/40 p-4 rounded-2xl border border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <div key={item.id || `${item.date}-${item.entryIndex}`} className="bg-bgApp/40 p-4 rounded-2xl border border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                         <div className="flex items-center gap-4">
                                             <span className="text-lg font-bold text-textMuted w-8 text-center flex justify-center">
                                                 {positionEmoji}
@@ -1078,7 +1095,7 @@ export default function LoveTracker() {
                                                     }
 
                                                     return (
-                                                        <div key={index} className="bg-cardDark/50 p-4 rounded-xl border border-white/5 space-y-2">
+                                                        <div key={item.id || index} className="bg-cardDark/50 p-4 rounded-xl border border-white/5 space-y-2">
                                                             <div className="flex justify-between items-start gap-2 flex-wrap">
                                                                 <div className="flex items-center gap-2 flex-wrap">
                                                                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${badgeStyle}`}>

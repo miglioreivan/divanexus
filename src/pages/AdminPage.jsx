@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail, getAuth } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendPasswordResetEmail, getAuth } from 'firebase/auth';
 import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import { auth, db, app as firebaseApp } from '../firebase';
-import { AVAILABLE_APPS } from '../constants';
-
-const ADMIN_UID = "vdeS2SIosTWqeauP0PaZIllEG1f2";
-export { ADMIN_UID };
+import { AVAILABLE_APPS, ADMIN_UID } from '../constants';
+import { useAuthGuard } from '../hooks/useAuthGuard';
 
 export default function AdminPage() {
-    const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState([]);
     const [requests, setRequests] = useState([]);
     const [pendingCount, setPendingCount] = useState(0);
@@ -28,19 +25,26 @@ export default function AdminPage() {
     const [editAllowedApps, setEditAllowedApps] = useState([]);
 
     const navigate = useNavigate();
+    const secondaryAppRef = useRef(null);
+
+    const { user, loading } = useAuthGuard({ redirectTo: '/app' });
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (!user || user.uid !== ADMIN_UID) {
-                alert("⛔ Accesso Negato.");
-                navigate('/app');
-            } else {
-                setLoading(false);
-                loadData();
-            }
-        });
-        return () => unsubscribe();
-    }, [navigate]);
+        if (!loading && user?.uid !== ADMIN_UID) {
+            alert("⛔ Accesso Negato.");
+            navigate('/app');
+        }
+        if (!loading && user?.uid === ADMIN_UID) {
+            loadData();
+        }
+    }, [loading, user, navigate]);
+
+    const getSecondaryAuth = () => {
+        if (!secondaryAppRef.current) {
+            secondaryAppRef.current = initializeApp(firebaseApp.options, "AdminSecondary");
+        }
+        return getAuth(secondaryAppRef.current);
+    };
 
     const loadData = () => {
         loadUsers();
@@ -51,7 +55,7 @@ export default function AdminPage() {
         }, (error) => {
             console.error("Requests Load Error:", error);
         });
-        return unsubRequests; // Cleanup handled by component unmount roughly, or strict useEffect return logic if we persist unsub
+        return unsubRequests;
     };
 
     const loadUsers = async () => {
@@ -69,19 +73,11 @@ export default function AdminPage() {
         setStatusMsg({ text: 'Creazione...', type: 'text-textMuted' });
 
         try {
-            // Secondary App Trick to create user without logging out Admin
-            const secondaryApp = initializeApp(firebaseApp.options, "SecondaryAppManual" + Date.now()); // Unique name to avoid conflicts
-            const secondaryAuth = getAuth(secondaryApp);
+            const secondaryAuth = getSecondaryAuth();
             const userCred = await createUserWithEmailAndPassword(secondaryAuth, newEmail, newPassword);
             const newUser = userCred.user;
 
             await setDoc(doc(db, "users", newUser.uid), { email: newEmail, role: 'user', createdAt: new Date() });
-
-            // Cleanup: secondaryApp doesn't have a direct delete() method exposed easily in modular v9+, 
-            // but we just let it be garbage collected or use it once. 
-            // Actually, signOut is enough for auth state, but the app instance remains. 
-            // It's fine for this admin panel usage.
-            await signOut(secondaryAuth);
 
             setStatusMsg({ text: '✅ Utente creato!', type: 'text-green-500' });
             setNewEmail(''); setNewPassword('');
@@ -98,16 +94,14 @@ export default function AdminPage() {
         if (!password) return;
 
         try {
-            const secondaryApp = initializeApp(firebaseApp.options, "SecondaryAppRequest" + Date.now());
-            const secondaryAuth = getAuth(secondaryApp);
+            const secondaryAuth = getSecondaryAuth();
             const userCred = await createUserWithEmailAndPassword(secondaryAuth, req.email, password);
             const newUser = userCred.user;
 
             await setDoc(doc(db, "users", newUser.uid), { email: req.email, role: 'user', createdAt: new Date() });
             await deleteDoc(doc(db, "registration_requests", req.id));
-            await signOut(secondaryAuth);
 
-            alert(`✅ Utente creato!\n\nEmail: ${req.email}\nPassword: ${password}\nUID: ${newUser.uid}`);
+            alert(`✅ Utente creato!\\n\\nEmail: ${req.email}\\nPassword: ${password}\\nUID: ${newUser.uid}`);
             loadUsers();
         } catch (e) {
             alert("Errore: " + e.message);

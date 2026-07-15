@@ -1,3 +1,5 @@
+export const ADMIN_UID = import.meta.env.VITE_ADMIN_UID || "vdeS2SIosTWqeauP0PaZIllEG1f2";
+
 export const AVAILABLE_APPS = [
     {
         id: 'lovetracker',

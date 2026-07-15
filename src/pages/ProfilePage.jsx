@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signOut, onAuthStateChanged, updateEmail, updatePassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { signOut, updateEmail, updatePassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useAuthGuard } from '../hooks/useAuthGuard';
+import { useUserData } from '../hooks/useUserData';
 
 export default function ProfilePage() {
-    const [loading, setLoading] = useState(true);
-    const [currentUser, setCurrentUser] = useState(null);
+    const navigate = useNavigate();
+    const { user, loading } = useAuthGuard();
+    const { userData, loading: userDataLoading } = useUserData(user);
 
     const [name, setName] = useState('');
     const [dob, setDob] = useState('');
@@ -16,30 +19,19 @@ export default function ProfilePage() {
     const [isSaving, setIsSaving] = useState(false);
     const [statusMsg, setStatusMsg] = useState({ text: '', type: '' });
 
-    const navigate = useNavigate();
+    // Initialize local state from userData when it loads
+    useEffect(() => {
+        if (user) setEmail(user.email);
+    }, [user]);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (!user) {
-                navigate('/');
-            } else {
-                setCurrentUser(user);
-                setEmail(user.email);
-                try {
-                    const userSnap = await getDoc(doc(db, "users", user.uid));
-                    if (userSnap.exists()) {
-                        const data = userSnap.data();
-                        if (data.name) setName(data.name);
-                        if (data.dateOfBirth) setDob(data.dateOfBirth);
-                    }
-                } catch (e) {
-                    console.error("Error loading profile:", e);
-                }
-                setLoading(false);
-            }
-        });
-        return () => unsubscribe();
-    }, [navigate]);
+        if (userData) {
+            if (userData.name) setName(userData.name);
+            if (userData.dateOfBirth) setDob(userData.dateOfBirth);
+        }
+    }, [userData]);
+
+    const isLoading = loading || userDataLoading;
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -48,20 +40,19 @@ export default function ProfilePage() {
 
         try {
             // Update Auth Email if changed
-            if (email && email !== currentUser.email) {
-                await updateEmail(currentUser, email);
+            if (email && email !== user.email) {
+                await updateEmail(user, email);
             }
 
             // Update Auth Password if provided
             if (password) {
-                await updatePassword(currentUser, password);
+                await updatePassword(user, password);
             }
 
-            // Update Firestore Profile Data
-            await setDoc(doc(db, "users", currentUser.uid), {
+            // Update Firestore Profile Data (write to sub-document to avoid overwriting allowedApps/role)
+            await setDoc(doc(db, "users", user.uid, "profile", "main"), {
                 name,
-                dateOfBirth: dob,
-                email: email // Keep email synced in doc if desired
+                dateOfBirth: dob
             }, { merge: true });
 
             setStatusMsg({ text: '✅ Profilo aggiornato con successo!', type: 'text-green-400' });
@@ -78,7 +69,7 @@ export default function ProfilePage() {
         }
     };
 
-    if (loading) return null;
+    if (isLoading) return null;
 
     // Style override for Profile - Teal
     const pageStyle = {
