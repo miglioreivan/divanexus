@@ -440,7 +440,7 @@ export default function LoveTracker() {
     };
 
     return (
-        <div className={`min-h-screen p-4 md:p-8 flex items-center justify-center transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`} style={pageStyle}>
+        <div className={`min-h-screen p-4 md:p-8 flex flex-col items-center justify-start md:justify-center overflow-y-auto transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`} style={pageStyle}>
 
             <div className="fixed top-6 right-6 z-50 flex gap-2">
                 <Link to="/app" className="btn-secondary rounded-full px-4 py-2 text-xs font-semibold no-underline shadow-lg bg-cardDark hover:bg-white/10">
@@ -593,7 +593,7 @@ export default function LoveTracker() {
                 </div>
 
                 {/* Classifica Esperienze */}
-                <div className="col-span-1 md:col-span-3 bento-card p-8 flex flex-col gap-6">
+                <div className="col-span-1 md:col-span-3 bento-card p-8 flex flex-col gap-6 max-w-full overflow-x-hidden">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4">
                         <div>
                             <h2 className="text-xl font-bold text-white tracking-tight">🏆 Classifica delle Esperienze</h2>
@@ -601,7 +601,7 @@ export default function LoveTracker() {
                         </div>
                         
                         {/* Tabs for Classifica */}
-                        <div className="flex gap-1 bg-black/25 p-1 rounded-xl border border-white/5 self-end sm:self-auto min-w-[320px] overflow-x-auto">
+                        <div className="flex gap-1 bg-black/25 p-1 rounded-xl border border-white/5 self-end sm:self-auto overflow-x-auto max-w-full">
                             {[
                                 { id: 'congiunta', label: 'Congiunta' },
                                 { id: 'sesso', label: 'Sesso' },
@@ -677,24 +677,24 @@ export default function LoveTracker() {
                                 const detailsText = details.length > 0 ? `(${details.join(', ')})` : '';
 
                                 return (
-                                    <div key={item.id || `${item.date}-${item.entryIndex}`} className="bg-bgApp/40 p-4 rounded-2xl border border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-lg font-bold text-textMuted w-8 text-center flex justify-center">
+                                    <div key={item.id || `${item.date}-${item.entryIndex}`} className="bg-bgApp/40 p-4 rounded-2xl border border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 max-w-full overflow-hidden">
+                                        <div className="flex items-start gap-3 min-w-0 flex-1 w-full">
+                                            <span className="text-lg font-bold text-textMuted w-8 text-center flex-shrink-0 mt-0.5">
                                                 {positionEmoji}
                                             </span>
-                                            <div className="space-y-1 text-left">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${badgeStyle}`}>
+                                            <div className="space-y-1 text-left min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap break-words">
+                                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${badgeStyle}`}>
                                                         {badgeLabel}
                                                     </span>
-                                                    <span className="text-xs text-white/80 font-medium">
+                                                    <span className="text-xs text-white/80 font-medium break-words">
                                                         Con: <span className="text-accent font-bold">{item.partner || 'Anonimo'}</span>
                                                     </span>
                                                     {detailsText && (
-                                                        <span className="text-[10px] text-textMuted italic">{detailsText}</span>
+                                                        <span className="text-[10px] text-textMuted italic break-words w-full sm:w-auto">{detailsText}</span>
                                                     )}
                                                 </div>
-                                                <div className="text-xs text-textMuted flex items-center gap-2 flex-wrap">
+                                                <div className="text-xs text-textMuted flex items-center gap-2 flex-wrap break-words">
                                                     <span>📅 {formattedDate}</span>
                                                     {item.time && <span>🕒 {item.time}</span>}
                                                     {item.location && <span>📍 {item.location}</span>}
@@ -702,9 +702,9 @@ export default function LoveTracker() {
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-center gap-1.5 self-end sm:self-auto bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
-                                            <span className={`text-xs ${ratingColor} font-bold`}>Voto:</span>
-                                            <span className="tracking-wide">{ratingIcon.repeat(item.rating || 5)}</span>
+                                        <div className="flex items-center gap-1.5 self-end sm:self-auto bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 flex-shrink-0 max-w-full overflow-hidden">
+                                            <span className={`text-xs ${ratingColor} font-bold flex-shrink-0`}>Voto:</span>
+                                            <span className="tracking-wide truncate">{ratingIcon.repeat(item.rating || 5)}</span>
                                         </div>
                                     </div>
                                 );

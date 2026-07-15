@@ -328,7 +328,7 @@ export default function University() {
         };
 
         return (
-            <div className="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center" style={pageStyle}>
+            <div className="min-h-screen p-4 md:p-8 flex flex-col items-center justify-start md:justify-center overflow-y-auto" style={pageStyle}>
                 <div className="w-full max-w-5xl flex flex-col items-center pt-8 p-4">
                     <div className="text-center mb-8">
                         <h1 className="text-3xl font-bold text-white mb-2">Carriera Universitaria</h1>

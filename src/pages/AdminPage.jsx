@@ -153,7 +153,7 @@ export default function AdminPage() {
     if (loading) return null;
 
     return (
-        <div className="min-h-screen p-8 flex flex-col items-center">
+        <div className="min-h-screen p-8 flex flex-col items-center overflow-y-auto">
             <div className="fixed top-6 right-6 z-50 flex gap-2">
                 <Link to="/app" className="flex items-center gap-2 bg-[#18181b] hover:bg-[#27272a] border border-white/5 text-textMuted hover:text-white px-4 py-2 rounded-full text-xs font-semibold transition-all no-underline shadow-lg">
                     🏠 Home

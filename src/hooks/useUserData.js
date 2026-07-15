@@ -27,7 +27,7 @@ export function useUserData(user) {
                         const data = userSnap.data();
                         setUserData({
                             ...data,
-                            allowedApps: data.allowedApps || AVAILABLE_APPS.map(a => a.id),
+                            allowedApps: (data.allowedApps && data.allowedApps.length > 0) ? data.allowedApps : AVAILABLE_APPS.map(a => a.id),
                         });
                     } else {
                         setUserData({ allowedApps: AVAILABLE_APPS.map(a => a.id) });

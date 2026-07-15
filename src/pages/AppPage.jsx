@@ -24,7 +24,7 @@ export default function AppPage() {
     if (isLoading) return null;
 
     return (
-        <div className="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center transition-opacity duration-300 opacity-100">
+        <div className="min-h-screen p-4 md:p-8 flex flex-col items-center justify-start md:justify-center overflow-y-auto transition-opacity duration-300 opacity-100">
 
             <div className="fixed top-6 right-6 z-50">
                 <button
