@@ -7,9 +7,12 @@ import { useAuthGuard } from '../hooks/useAuthGuard';
 import './University.css';
 
 export default function University() {
-    const { user, loading } = useAuthGuard();
-    const [dataLoading, setDataLoading] = useState(true);
     const [searchParams] = useSearchParams();
+    const sharedUid = searchParams.get('shared');
+    const isGuest = !!sharedUid;
+
+    const { user, loading } = useAuthGuard({ requireAuth: !isGuest });
+    const [dataLoading, setDataLoading] = useState(true);
     const navigate = useNavigate();
 
     // Data State
