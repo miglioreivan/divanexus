@@ -11,11 +11,11 @@ export default function AppPage() {
     const { user, loading } = useAuthGuard();
     const { userData, loading: userDataLoading } = useUserData(user);
 
-    const allowedApps = userData?.allowedApps || [];
+    const allowedApps = userData?.allowedApps || (userDataLoading ? AVAILABLE_APPS.map(a => a.id) : []);
     const userName = userData?.name || '';
     const userDob = userData?.dateOfBirth || '';
 
-    const isLoading = loading || userDataLoading;
+    const isLoading = loading || (userDataLoading && !userData);
 
     const handleLogout = () => {
         signOut(auth).then(() => navigate('/'));
