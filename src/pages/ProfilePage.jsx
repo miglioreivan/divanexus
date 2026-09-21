@@ -55,6 +55,15 @@ export default function ProfilePage() {
                 dateOfBirth: dob
             }, { merge: true });
 
+            // Sincronizza il nome anche nel documento della carriera universitaria per la condivisione pubblica
+            try {
+                await setDoc(doc(db, "users", user.uid, "university", "main"), {
+                    userName: name
+                }, { merge: true });
+            } catch (e) {
+                console.error("Errore sincronizzazione nome carriera:", e);
+            }
+
             setStatusMsg({ text: '✅ Profilo aggiornato con successo!', type: 'text-green-400' });
             setPassword(''); // Clear password field after save
         } catch (error) {

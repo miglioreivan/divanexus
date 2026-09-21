@@ -93,19 +93,7 @@ export default function University() {
                 const data = docSnap.data();
                 if (data.isUniPublic) {
                     setGuestData(data.uniData || { exams: [], subjects: [] });
-                    
-                    try {
-                        const profileRef = doc(db, "users", uid, "profile", "main");
-                        const profileSnap = await getDoc(profileRef);
-                        if (profileSnap.exists() && profileSnap.data().name) {
-                            setSharedUserName(profileSnap.data().name);
-                        } else {
-                            setSharedUserName('un Utente Sconosciuto');
-                        }
-                    } catch (err) {
-                        console.error("Errore nel recupero profilo", err);
-                        setSharedUserName('un Utente Sconosciuto');
-                    }
+                    setSharedUserName(data.userName || 'un Utente Sconosciuto');
                 } else {
                     alert("Questa carriera è privata.");
                     navigate('/');
