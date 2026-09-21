@@ -20,7 +20,7 @@ export default function LoveTracker() {
     const [partner, setPartner] = useState('');
     const [isProtected, setIsProtected] = useState(false);
     const [notes, setNotes] = useState('');
-    const [editingIndex, setEditingIndex] = useState(null);
+    const [editingId, setEditingId] = useState(null);
 
     // Body Count Modal State
     const [isBodyCountModalOpen, setIsBodyCountModalOpen] = useState(false);
@@ -67,7 +67,11 @@ export default function LoveTracker() {
 
     const saveToCloud = async (newData) => {
         if (!user) return;
-        await setDoc(doc(db, "users", user.uid, "loveTracker", "main"), { data: newData, lastUpdate: new Date() }, { merge: true });
+        try {
+            await setDoc(doc(db, "users", user.uid, "loveTracker", "main"), { data: newData, lastUpdate: new Date() }, { merge: true });
+        } catch (e) {
+            console.error("Errore salvataggio (possibile AdBlocker):", e);
+        }
     };
 
     useEffect(() => {
@@ -98,14 +102,16 @@ export default function LoveTracker() {
         const newData = { ...dataStore };
         if (!newData[selectedDateKey]) newData[selectedDateKey] = [];
 
-        if (editingIndex !== null) {
-            const existingEntry = newData[selectedDateKey][editingIndex];
-            newData[selectedDateKey][editingIndex] = {
-                id: existingEntry?.id || crypto.randomUUID(),
-                partner: partner.trim(),
-                isProtected,
-                notes: notes.trim()
-            };
+        if (editingId !== null) {
+            const entryIndex = newData[selectedDateKey].findIndex(e => e.id === editingId);
+            if (entryIndex !== -1) {
+                newData[selectedDateKey][entryIndex] = {
+                    id: editingId,
+                    partner: partner.trim(),
+                    isProtected,
+                    notes: notes.trim()
+                };
+            }
         } else {
             newData[selectedDateKey].push({
                 id: crypto.randomUUID(),
@@ -124,16 +130,14 @@ export default function LoveTracker() {
         setPartner('');
         setIsProtected(false);
         setNotes('');
-        setEditingIndex(null);
+        setEditingId(null);
     };
 
-    const handleDeleteEntry = async (index) => {
+    const handleDeleteEntry = async (id) => {
         const newData = { ...dataStore };
         if (!newData[selectedDateKey]) return;
 
-        // Create a copy of the array to avoid direct state mutation
-        const newArray = [...newData[selectedDateKey]];
-        newArray.splice(index, 1);
+        const newArray = newData[selectedDateKey].filter(e => e.id !== id);
 
         if (newArray.length === 0) {
             delete newData[selectedDateKey];
@@ -143,11 +147,11 @@ export default function LoveTracker() {
 
         setDataStore(newData);
         await saveToCloud(newData);
-        if (editingIndex === index) resetForm();
+        if (editingId === id) resetForm();
     };
 
-    const handleEditEntry = (index, entry) => {
-        setEditingIndex(index);
+    const handleEditEntry = (entry) => {
+        setEditingId(entry.id);
         setPartner(entry.partner || '');
         setIsProtected(entry.isProtected || false);
         setNotes(entry.notes || '');
@@ -437,8 +441,8 @@ export default function LoveTracker() {
                             {(!dataStore[selectedDateKey] || dataStore[selectedDateKey].length === 0) ? (
                                 <p className="text-center text-xs text-textMuted py-4">Nessun dato.</p>
                             ) : (
-                                dataStore[selectedDateKey].map((entry, idx) => (
-                                    <div key={idx} className="bg-bgApp p-4 rounded-xl border border-white/5 flex justify-between items-start">
+                                dataStore[selectedDateKey].map((entry) => (
+                                    <div key={entry.id} className="bg-bgApp p-4 rounded-xl border border-white/5 flex justify-between items-start">
                                         <div className="space-y-2 text-left w-full">
                                             {entry.partner && (
                                                 <div className="text-sm font-bold text-white">
@@ -457,8 +461,8 @@ export default function LoveTracker() {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-2 mt-1 ml-4 shrink-0">
-                                            <button onClick={() => handleEditEntry(idx, entry)} className="text-textMuted hover:text-accent p-1 text-sm transition-colors">✎</button>
-                                            <button onClick={() => handleDeleteEntry(idx)} className="text-textMuted hover:text-red-500 p-1 text-sm transition-colors">✕</button>
+                                            <button onClick={() => handleEditEntry(entry)} className="text-textMuted hover:text-accent p-1 text-sm transition-colors">✎</button>
+                                            <button onClick={() => handleDeleteEntry(entry.id)} className="text-textMuted hover:text-red-500 p-1 text-sm transition-colors">✕</button>
                                         </div>
                                     </div>
                                 ))
@@ -467,11 +471,13 @@ export default function LoveTracker() {
 
                         {/* New Entry Form */}
                         <div className="bg-cardDark p-5 rounded-2xl border border-white/5">
-                            <h4 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-4">{editingIndex !== null ? 'Modifica Esperienza' : 'Nuova Esperienza'}</h4>
+                            <h4 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-4">{editingId !== null ? 'Modifica Esperienza' : 'Nuova Esperienza'}</h4>
                             <form onSubmit={handleSaveEntry} className="space-y-4">
                                 <div>
-                                    <label className="input-label">Partner</label>
+                                    <label htmlFor="partnerInput" className="input-label">Partner</label>
                                     <input 
+                                        id="partnerInput"
+                                        name="partner"
                                         type="text" 
                                         value={partner} 
                                         onChange={(e) => setPartner(e.target.value)} 
@@ -489,8 +495,10 @@ export default function LoveTracker() {
                                 </div>
 
                                 <div>
-                                    <label className="input-label">Note</label>
+                                    <label htmlFor="notesInput" className="input-label">Note</label>
                                     <textarea
+                                        id="notesInput"
+                                        name="notes"
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
                                         placeholder="Aggiungi eventuali dettagli (es. luogo, impressioni...)"
@@ -499,10 +507,10 @@ export default function LoveTracker() {
                                 </div>
 
                                 <div className="flex gap-2 pt-2">
-                                    {editingIndex !== null && (
+                                    {editingId !== null && (
                                         <button type="button" onClick={resetForm} className="w-1/3 btn-secondary text-sm py-4">Annulla</button>
                                     )}
-                                    <button type="submit" className="flex-1 btn-primary text-sm py-4">{editingIndex !== null ? 'Aggiorna' : 'Salva'}</button>
+                                    <button type="submit" className="flex-1 btn-primary text-sm py-4">{editingId !== null ? 'Aggiorna' : 'Salva'}</button>
                                 </div>
                             </form>
                         </div>
