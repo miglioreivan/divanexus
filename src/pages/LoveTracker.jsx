@@ -72,7 +72,7 @@ export default function LoveTracker() {
     const saveToCloud = async (newData) => {
         if (!user) return;
         try {
-            await setDoc(doc(db, "users", user.uid, "loveTracker", "main"), { data: newData, lastUpdate: new Date() }, { merge: true });
+            await setDoc(doc(db, "users", user.uid, "loveTracker", "main"), { data: newData, lastUpdate: new Date() });
         } catch (e) {
             console.error("Errore salvataggio (possibile AdBlocker):", e);
         }
