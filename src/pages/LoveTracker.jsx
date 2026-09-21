@@ -59,6 +59,10 @@ export default function LoveTracker() {
                         notes: newNotes
                     };
                 }
+                
+                if (!e.id) {
+                    hasChanges = true; // Deve salvare il nuovo UUID su Firebase
+                }
                 return { ...e, id: e.id || crypto.randomUUID() };
             });
         });
@@ -532,7 +536,7 @@ export default function LoveTracker() {
                     <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-bgApp">
                         {/* Partners List Sidebar */}
                         <div className="w-full md:w-1/3 border-r border-white/5 overflow-y-auto p-4 space-y-2 max-h-[30vh] md:max-h-none border-b md:border-b-0">
-                            <label className="block text-[10px] uppercase text-textMuted font-bold mb-2 ml-1 tracking-wider text-left">Tutti i Partner ({partnersData.length})</label>
+                            <h4 className="block text-[10px] uppercase text-textMuted font-bold mb-2 ml-1 tracking-wider text-left">Tutti i Partner ({partnersData.length})</h4>
                             {partnersData.length === 0 ? (
                                 <p className="text-xs text-textMuted p-2 text-left">Nessun partner registrato.</p>
                             ) : (
