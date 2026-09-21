@@ -102,7 +102,7 @@ export default function ProfilePage() {
                     <p className="text-sm text-textMuted">Gestisci i tuoi dati e le credenziali di accesso</p>
                 </div>
 
-                <div className="bento-card p-8 shadow-2xl bg-cardDark border border-white/10">
+                <div className="bento-card p-5 md:p-8 shadow-2xl bg-cardDark border border-white/10 w-full overflow-hidden">
                     <form onSubmit={handleSave} className="space-y-4">
                         
                         <div className="space-y-1">
@@ -116,13 +116,13 @@ export default function ProfilePage() {
                             />
                         </div>
 
-                        <div className="space-y-1">
+                        <div className="space-y-1 w-full max-w-full">
                             <label className="input-label">Data di Nascita</label>
                             <input
                                 type="date"
                                 value={dob}
                                 onChange={(e) => setDob(e.target.value)}
-                                className="input-field"
+                                className="input-field appearance-none min-w-0 w-full"
                             />
                         </div>
 

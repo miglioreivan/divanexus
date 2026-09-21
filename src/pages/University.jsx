@@ -20,6 +20,7 @@ export default function University() {
     const [isPublic, setIsPublic] = useState(false);
     const [isGuestView, setIsGuestView] = useState(false);
     const [guestData, setGuestData] = useState(null);
+    const [sharedUserName, setSharedUserName] = useState('');
 
     // Modal States
     const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
@@ -92,6 +93,19 @@ export default function University() {
                 const data = docSnap.data();
                 if (data.isUniPublic) {
                     setGuestData(data.uniData || { exams: [], subjects: [] });
+                    
+                    try {
+                        const profileRef = doc(db, "users", uid, "profile", "main");
+                        const profileSnap = await getDoc(profileRef);
+                        if (profileSnap.exists() && profileSnap.data().name) {
+                            setSharedUserName(profileSnap.data().name);
+                        } else {
+                            setSharedUserName('un Utente Sconosciuto');
+                        }
+                    } catch (err) {
+                        console.error("Errore nel recupero profilo", err);
+                        setSharedUserName('un Utente Sconosciuto');
+                    }
                 } else {
                     alert("Questa carriera è privata.");
                     navigate('/');
@@ -335,7 +349,7 @@ export default function University() {
                 <div className="w-full max-w-5xl flex flex-col items-center pt-8 p-4">
                     <div className="text-center mb-8">
                         <h1 className="text-3xl font-bold text-white mb-2">Carriera Universitaria</h1>
-                        <p className="text-textMuted">Condivisa tramite UniTracker</p>
+                        <p className="text-textMuted">Condivisa da <span className="text-white font-bold">{sharedUserName}</span></p>
                     </div>
 
                     <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
